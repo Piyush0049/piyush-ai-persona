@@ -120,3 +120,10 @@ The server will start at `http://localhost:8000`. Open it in your browser to tes
 - **Hallucination Rate:** 0.0% (verified via LLM Judge and Golden Q&A set)
 - **Retrieval Quality:** 100.0% Precision / 95.8% Recall
 - **PDF Report:** Read the full report at `static/evals_report.pdf` (or via the link in the web UI).
+
+---
+
+## 📄 License
+
+Proprietary and Confidential. All rights reserved by Piyush Joshi (2026).
+Unauthorized copying, modification, sharing, or distribution of this code or its parts is strictly prohibited. Submitted exclusively as an academic screening assignment.

@@ -23,6 +23,12 @@ jobs:
           port: 22
           script: |
             # Navigate to application folder (defaulting to user home dir)
+            # Ensure git is installed on the host first
+            if ! command -v git &> /dev/null; then
+              echo "git not found. Installing git..."
+              sudo dnf install -y git || sudo yum install -y git
+            fi
+
             PROJECT_DIR="/home/${{ secrets.EC2_USERNAME }}/rag_project_system"
             if [ ! -d "$PROJECT_DIR" ]; then
               echo "Project directory not found. Cloning repository..."
