@@ -1,6 +1,7 @@
 import os
 import sys
 
+
 def extract_pdf_text(pdf_path):
     print(f"Attempting to extract text from: {pdf_path}")
     try:
