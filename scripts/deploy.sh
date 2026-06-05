@@ -43,14 +43,16 @@ sudo systemctl daemon-reload
 sudo systemctl enable rag_portfolio.service
 sudo systemctl restart rag_portfolio.service
 
-# 5. Configure Nginx reverse proxy for portfolio.piyushjoshi.space
+# 5. Configure Nginx reverse proxy for portfolio.piyushjoshi.space if not already present
 echo "Configuring Nginx reverse proxy..."
 if ! command -v nginx &> /dev/null; then
     echo "Installing Nginx..."
     sudo dnf install -y nginx || sudo yum install -y nginx
 fi
 
-sudo tee /etc/nginx/conf.d/rag_portfolio.conf > /dev/null << 'EOF'
+if [ ! -f /etc/nginx/conf.d/rag_portfolio.conf ]; then
+    echo "Creating new Nginx configuration file..."
+    sudo tee /etc/nginx/conf.d/rag_portfolio.conf > /dev/null << 'EOF'
 server {
     listen 80;
     server_name portfolio.piyushjoshi.space;
@@ -64,8 +66,10 @@ server {
     }
 }
 EOF
-
-sudo systemctl enable nginx --now
-sudo systemctl restart nginx
+    sudo systemctl enable nginx --now
+    sudo systemctl restart nginx
+else
+    echo "Nginx configuration already exists. Skipping recreation to preserve SSL/custom settings."
+fi
 
 echo "Deployment completed successfully!"
