@@ -76,6 +76,7 @@
             display: flex;
             flex-direction: column;
             z-index: 10;
+            transition: transform 0.3s ease;
         }
 
         .logo-section {
@@ -821,19 +822,83 @@
             cursor: pointer;
         }
 
+        .hamburger-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .hamburger-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .sidebar-close-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .sidebar-close-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             aside.sidebar {
-                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                transform: translateX(-100%);
+                z-index: 1000;
+                box-shadow: 5px 0 25px rgba(0,0,0,0.5);
+                display: flex !important;
             }
+            
+            aside.sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .hamburger-btn {
+                display: flex !important;
+            }
+            
+            .sidebar-close-btn {
+                display: flex !important;
+            }
+            
             .suggestion-grid {
                 grid-template-columns: 1fr;
             }
+            
             .messages-viewport {
                 padding: 24px 16px;
             }
+            
             .chat-input-area {
-                padding: 16px;
+                padding: 16px 16px 24px 16px;
             }
         }
     </style>
@@ -847,11 +912,16 @@
 
         <!-- Sidebar -->
         <aside class="sidebar">
-            <div class="logo-section">
-                <div class="logo-icon">
-                    <i data-lucide="sparkles" style="color: #fff; width: 16px; height: 16px;"></i>
+            <div class="logo-section" style="justify-content: space-between; width: 100%;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="logo-icon">
+                        <i data-lucide="sparkles" style="color: #fff; width: 16px; height: 16px;"></i>
+                    </div>
+                    <span class="logo-text">Piyush AI Rep</span>
                 </div>
-                <span class="logo-text">Piyush AI Rep</span>
+                <button class="sidebar-close-btn" id="sidebar-close" aria-label="Close sidebar">
+                    <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                </button>
             </div>
 
             <!-- Voice Call Widget -->
@@ -903,9 +973,14 @@
         <!-- Main Panel -->
         <main class="main-content">
             <header class="chat-header">
-                <div class="status-pill">
-                    <div class="status-dot"></div>
-                    <span>Grounded Persona Live</span>
+                <div class="header-left">
+                    <button class="hamburger-btn" id="sidebar-toggle" aria-label="Open sidebar">
+                        <i data-lucide="menu" style="width: 18px; height: 18px;"></i>
+                    </button>
+                    <div class="status-pill">
+                        <div class="status-dot"></div>
+                        <span>Grounded Persona Live</span>
+                    </div>
                 </div>
                 <div class="header-actions">
                     <button class="header-btn" id="clear-btn">
@@ -1438,6 +1513,38 @@
         
         bookToolChip.addEventListener('click', () => {
             sendSuggestion("Propose available interview slots.");
+        });
+
+        // Sidebar Toggle for Mobile
+        const sidebarToggle = document.getElementById('sidebar-toggle');
+        const sidebarClose = document.getElementById('sidebar-close');
+        const sidebar = document.querySelector('aside.sidebar');
+        
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sidebar.classList.toggle('active');
+            });
+        }
+        
+        if (sidebarClose) {
+            sidebarClose.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+            });
+        }
+        
+        // Close sidebar when clicking any navigation link
+        document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                sidebar.classList.remove('active');
+            });
+        });
+        
+        // Close sidebar when clicking main content
+        document.querySelector('.main-content').addEventListener('click', (e) => {
+            if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && e.target !== sidebarToggle && !sidebarToggle.contains(e.target)) {
+                sidebar.classList.remove('active');
+            }
         });
     </script>
 </body>
