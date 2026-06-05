@@ -4,8 +4,8 @@ A RAG-grounded AI Representative persona of **Piyush Joshi** that users can chat
 
 ## 🚀 Live Demo & Access
 
-- **Public Chat URL:** *(Insert your deployed URL, e.g., Render/Vercel/Fly.io URL)*
-- **Voice Agent Phone Number:** *(Insert your Vapi/Twilio phone number)*
+- **Public Chat URL:** https://portfolio.piyushjoshi.space/
+- **Voice Agent Phone Number:** +1 (321) 785-8851
 - **Interactive Web Call:** Accessible directly by clicking **"Call Representative"** on the chat interface!
 
 ---
