@@ -2,6 +2,7 @@ import json
 import re
 import datetime
 import httpx
+import asyncio
 from typing import List, Dict, Any, AsyncGenerator
 from config import settings
 from rag_service import rag_service
