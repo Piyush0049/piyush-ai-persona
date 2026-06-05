@@ -16,11 +16,15 @@ jobs:
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
+        env:
+          ENV_FILE_CONTENT: ${{ secrets.ENV_FILE_CONTENT }}
+          GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
+          envs: ENV_FILE_CONTENT,GOOGLE_CREDENTIALS_JSON
           script: |
             # Navigate to application folder (defaulting to user home dir)
             # Ensure git is installed on the host first
@@ -38,12 +42,12 @@ jobs:
             cd "$PROJECT_DIR"
             git pull origin main
             
-            if [ ! -z "${{ secrets.ENV_FILE_CONTENT }}" ]; then
-              echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+            if [ ! -z "$ENV_FILE_CONTENT" ]; then
+              echo "$ENV_FILE_CONTENT" > .env
             fi
             
-            if [ ! -z "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" ]; then
-              echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > google_credentials.json
+            if [ ! -z "$GOOGLE_CREDENTIALS_JSON" ]; then
+              echo "$GOOGLE_CREDENTIALS_JSON" > google_credentials.json
             fi
             
             chmod +x scripts/deploy.sh
