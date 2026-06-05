@@ -1211,6 +1211,7 @@
 
         clearBtn.addEventListener('click', () => {
             conversationHistory = [];
+            localStorage.removeItem('CHAT_CONVERSATION_HISTORY');
             messagesContainer.innerHTML = '';
             messagesContainer.appendChild(welcomeView);
             welcomeView.style.display = 'flex';
@@ -1498,7 +1499,11 @@
                         answerBubble.style.display = 'none';
                     }
 
-                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    // Only auto-scroll to the bottom if the user is already scrolled to the bottom
+                    const isNearBottom = (messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight) < 100;
+                    if (isNearBottom) {
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    }
                 }
 
                 if (botRow === null) {
@@ -1522,6 +1527,7 @@
                 // Add to history
                 conversationHistory.push({ role: "user", content: text });
                 conversationHistory.push({ role: "assistant", content: reply });
+                saveChatHistory();
             } catch (err) {
                 removeLoadingBubble();
                 appendSystemMessage("Connection failed. Ensure the local backend server is running.");
@@ -1674,6 +1680,7 @@
                         role: "system",
                         content: `User booked an interview: Name: ${name}, Email: ${email}, Time: ${booking.formatted_time}, Booking ID: ${booking.booking_id}`
                     });
+                    saveChatHistory();
                 } else {
                     formBox.innerHTML = `<div style="color:#ef4444; font-size:13px; padding:8px;">Error: ${data.error}</div>`;
                 }
@@ -1723,6 +1730,87 @@
                 sidebar.classList.remove('active');
             }
         });
+
+        // Save chat history to localStorage
+        function saveChatHistory() {
+            localStorage.setItem('CHAT_CONVERSATION_HISTORY', JSON.stringify(conversationHistory));
+        }
+
+        // Load chat history from localStorage
+        function loadChatHistory() {
+            const stored = localStorage.getItem('CHAT_CONVERSATION_HISTORY');
+            if (stored) {
+                try {
+                    const history = JSON.parse(stored);
+                    if (history && history.length > 0) {
+                        conversationHistory = history;
+                        welcomeView.style.display = 'none';
+                        
+                        // Clear welcome view
+                        messagesContainer.innerHTML = '';
+                        
+                        conversationHistory.forEach((msg) => {
+                            if (msg.role === 'user') {
+                                const userRow = document.createElement('div');
+                                userRow.className = 'message-row user';
+                                userRow.innerHTML = `
+                                    <div class="msg-sender">
+                                        <span>User</span>
+                                    </div>
+                                    <div class="message-bubble">
+                                        ${msg.content}
+                                    </div>
+                                `;
+                                messagesContainer.appendChild(userRow);
+                            } else if (msg.role === 'assistant') {
+                                const botRow = document.createElement('div');
+                                botRow.className = 'message-row bot';
+                                
+                                const parsed = parseResponseContent(msg.content);
+                                let bubbleHtml = '';
+                                if (parsed.thinking) {
+                                    bubbleHtml += `
+                                        <details class="thinking-details">
+                                            <summary class="thinking-summary">
+                                                <i data-lucide="brain" style="width: 12px; height: 12px; margin-right: 6px; color: var(--text-muted);"></i>
+                                                <span>Thinking Process</span>
+                                                <i data-lucide="chevron-down" class="chevron-icon" style="width: 12px; height: 12px; margin-left: auto; color: var(--text-muted);"></i>
+                                            </summary>
+                                            <div class="thinking-content">
+                                                ${marked.parse(parsed.thinking)}
+                                            </div>
+                                        </details>
+                                    `;
+                                }
+                                
+                                bubbleHtml += `<div class="message-bubble">${marked.parse(parsed.answer)}</div>`;
+                                
+                                botRow.innerHTML = `
+                                    <div class="msg-sender">
+                                        <i data-lucide="sparkles" style="width: 10px; height: 10px; color: var(--accent);"></i>
+                                        <span>Assistant</span>
+                                    </div>
+                                    <div style="width: 100%;">
+                                        ${bubbleHtml}
+                                    </div>
+                                `;
+                                messagesContainer.appendChild(botRow);
+                            }
+                        });
+                        
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        Prism.highlightAll();
+                        lucide.createIcons();
+                    }
+                } catch (e) {
+                    console.error("Failed to parse stored history:", e);
+                    conversationHistory = [];
+                }
+            }
+        }
+
+        // Initialize chat history load
+        loadChatHistory();
     </script>
 </body>
 </html>
