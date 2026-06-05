@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches
+.pytest_cache/
+.cache/
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+venv.bak/
+
+# IDE files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# Local configuration and credentials
+.env
+google_credentials.json
+*.pem
+*.key
+*.cert
+*.json.bak
+
+# Local runtime databases / state
+data/calendar_db.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db

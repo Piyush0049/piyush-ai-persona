@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Piyush Joshi - AI Agent Portfolio</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Markdown Parser & Highlight.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    
+    <!-- Vapi Browser SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/vapi-sdk.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0b0c10;
+            --bg-secondary: #12141c;
+            --bg-glass: rgba(18, 20, 28, 0.7);
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --font-title: 'Outfit', sans-serif;
+            --font-body: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            font-family: var(--font-body);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* App Container */
+        .app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* Animated Grid Background */
+        .bg-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .bg-gradient-blur {
+            position: absolute;
+            top: -10%;
+            right: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%);
+            z-index: 0;
+            filter: blur(80px);
+            pointer-events: none;
+        }
+
+        .bg-gradient-blur-2 {
+            position: absolute;
+            bottom: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
+            z-index: 0;
+            filter: blur(80px);
+            pointer-events: none;
+        }
+
+        /* Sidebar styling */
+        aside.sidebar {
+            width: 320px;
+            background: var(--bg-glass);
+            border-right: 1px solid var(--border-glass);
+            backdrop-filter: blur(16px);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 32px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--accent-gradient);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .logo-text {
+            font-family: var(--font-title);
+            font-weight: 700;
+            font-size: 20px;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .new-thread-btn {
+            background: var(--accent-gradient);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: var(--font-body);
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px var(--accent-glow);
+            margin-bottom: 24px;
+        }
+
+        .new-thread-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px var(--accent-glow);
+        }
+
+        .voice-call-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .voice-call-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .voice-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: var(--font-body);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .voice-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .voice-btn.active {
+            background: #ef4444;
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .profile-area {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-glass);
+        }
+
+        .profile-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--accent-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-title);
+            font-weight: 700;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .profile-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .profile-role {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .profile-links {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .profile-link-btn {
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .profile-link-btn:hover {
+            color: var(--accent);
+        }
+
+        /* Main Chat Panel */
+        main.main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 5;
+            height: 100%;
+        }
+
+        .chat-header {
+            height: 64px;
+            border-bottom: 1px solid var(--border-glass);
+            background: rgba(11, 12, 16, 0.5);
+            backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            padding: 6px 12px;
+            border-radius: 50px;
+            border: 1px solid rgba(10, 185, 129, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-btn {
+            background: transparent;
+            border: 1px solid var(--border-glass);
+            color: var(--text-muted);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-family: var(--font-body);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .header-btn:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        /* Messages Viewport */
+        .messages-viewport {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 40px 10%;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        .welcome-view {
+            text-align: center;
+            margin-top: 8vh;
+            max-width: 600px;
+            align-self: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .welcome-title {
+            font-family: var(--font-title);
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(to right, #ffffff, #a3a3a3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .welcome-desc {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .suggestion-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .suggestion-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .suggestion-card:hover {
+            background: rgba(99, 102, 241, 0.05);
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .suggestion-header {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .suggestion-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        /* Message Bubble */
+        .message-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .message-row.user {
+            align-items: flex-end;
+        }
+
+        .message-row.bot {
+            align-items: flex-start;
+        }
+
+        .msg-sender {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .msg-sender span {
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            border-radius: 16px;
+            padding: 16px 20px;
+            line-height: 1.6;
+            font-size: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .message-row.user .message-bubble {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            color: var(--text-main);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message-row.bot .message-bubble {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-glass);
+            color: var(--text-main);
+            border-bottom-left-radius: 4px;
+        }
+
+        /* Markdown Styles inside message bubbles */
+        .message-bubble p {
+            margin-bottom: 12px;
+        }
+
+        .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-bubble ul, .message-bubble ol {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .message-bubble li {
+            margin-bottom: 4px;
+        }
+
+        .message-bubble code {
+            font-family: monospace;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .message-bubble pre {
+            margin: 16px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 13px;
+        }
+
+        .message-bubble pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .message-bubble h1, .message-bubble h2, .message-bubble h3 {
+            font-family: var(--font-title);
+            margin: 18px 0 8px 0;
+            font-weight: 700;
+        }
+
+        .message-bubble h1:first-child, .message-bubble h2:first-child, .message-bubble h3:first-child {
+            margin-top: 0;
+        }
+
+        /* Loading animation */
+        .loading-bubble {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 18px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+        }
+
+        .dot-pulse {
+            display: flex;
+            gap: 4px;
+        }
+
+        .dot-pulse div {
+            width: 6px;
+            height: 6px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: dot-pulse 1.4s infinite ease-in-out both;
+        }
+
+        .dot-pulse div:nth-child(1) { animation-delay: -0.32s; }
+        .dot-pulse div:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes dot-pulse {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        /* Calendar Widget */
+        .calendar-widget {
+            margin-top: 12px;
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            overflow: hidden;
+            max-width: 500px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .cal-header {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 12px 16px;
+            font-weight: 700;
+            font-family: var(--font-title);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-glass);
+        }
+
+        .slots-container {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .slot-btn {
+            background: rgba(99, 102, 241, 0.08);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 8px;
+            padding: 10px 14px;
+            text-align: left;
+            color: var(--text-main);
+            font-family: var(--font-body);
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slot-btn:hover {
+            background: var(--accent-gradient);
+            border-color: transparent;
+            transform: translateX(4px);
+            color: #fff;
+        }
+
+        .booking-form {
+            padding: 16px;
+            border-top: 1px solid var(--border-glass);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-group label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .form-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glass);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: white;
+            font-family: var(--font-body);
+            font-size: 13px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .booking-submit-btn {
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            font-family: var(--font-body);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .booking-submit-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Input Container */
+        .chat-input-area {
+            padding: 24px 10% 32px 10%;
+            background: linear-gradient(180deg, transparent 0%, var(--bg-primary) 50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-wrapper {
+            background: var(--bg-glass);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 12px 16px;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            transition: border-color 0.3s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+        }
+
+        .input-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        textarea.chat-input {
+            flex-grow: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-family: var(--font-body);
+            font-size: 15px;
+            resize: none;
+            height: 24px;
+            max-height: 120px;
+            line-height: 24px;
+            overflow-y: auto;
+        }
+
+        textarea.chat-input:focus {
+            outline: none;
+        }
+
+        .send-btn {
+            background: var(--accent-gradient);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-muted);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .input-tools {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .tool-chips {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tool-chip {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border-glass);
+            border-radius: 50px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tool-chip:hover {
+            color: white;
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.15);
+        }
+
+        .disclaimer-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* Settings Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-glass);
+            border-radius: 16px;
+            padding: 24px;
+            width: 450px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-family: var(--font-title);
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            aside.sidebar {
+                display: none;
+            }
+            .suggestion-grid {
+                grid-template-columns: 1fr;
+            }
+            .messages-viewport {
+                padding: 24px 16px;
+            }
+            .chat-input-area {
+                padding: 16px;
+            }
+            .message-bubble {
+                max-width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Interactive Background elements -->
+        <div class="bg-grid"></div>
+        <div class="bg-gradient-blur"></div>
+        <div class="bg-gradient-blur-2"></div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-section">
+                <div class="logo-icon">
+                    <i data-lucide="sparkles" style="color: #fff; width: 16px; height: 16px;"></i>
+                </div>
+                <span class="logo-text">Piyush AI Rep</span>
+            </div>
+
+            <!-- Voice Call Widget -->
+            <div class="voice-call-card">
+                <span class="voice-call-title">Voice Representative</span>
+                <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+                    Call and book interview in real-time. Direct phone: <b>+1 850 888 8888</b> or start a voice session below.
+                </p>
+                <button id="voice-call-btn" class="voice-btn">
+                    <i data-lucide="phone-call" style="width: 14px; height: 14px;"></i>
+                    <span id="voice-btn-text">Call Representative</span>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="sidebar-nav">
+                <div class="nav-link active">
+                    <i data-lucide="message-square" style="width: 18px; height: 18px;"></i>
+                    <span>Conversational Chat</span>
+                </div>
+                <div class="nav-link" id="check-slots-nav">
+                    <i data-lucide="calendar" style="width: 18px; height: 18px;"></i>
+                    <span>Check Availability</span>
+                </div>
+                <a href="/static/evals_report.pdf" target="_blank" class="nav-link">
+                    <i data-lucide="file-text" style="width: 18px; height: 18px;"></i>
+                    <span>Evals Report (PDF)</span>
+                </a>
+            </nav>
+
+            <!-- Profile Info Footer -->
+            <div class="profile-area">
+                <div class="profile-avatar">PJ</div>
+                <div class="profile-info">
+                    <span class="profile-name">Piyush Joshi</span>
+                    <span class="profile-role">CS @ NSUT 2026</span>
+                </div>
+                <div class="profile-links">
+                    <a href="https://github.com/Piyush0049" target="_blank" class="profile-link-btn" title="GitHub">
+                        <i data-lucide="github" style="width: 16px; height: 16px;"></i>
+                    </a>
+                    <a href="https://linkedin.com/in/piyush-joshi-324778254" target="_blank" class="profile-link-btn" title="LinkedIn">
+                        <i data-lucide="linkedin" style="width: 16px; height: 16px;"></i>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Panel -->
+        <main class="main-content">
+            <header class="chat-header">
+                <div class="status-pill">
+                    <div class="status-dot"></div>
+                    <span>Grounded Persona Live</span>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" id="clear-btn">
+                        <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                        <span>Clear Chat</span>
+                    </button>
+                    <button class="header-btn" id="settings-btn">
+                        <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
+                        <span>Settings</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Chat Viewport -->
+            <div class="messages-viewport" id="messages-container">
+                <!-- Welcome View -->
+                <div class="welcome-view" id="welcome-view">
+                    <h1 class="welcome-title">Ask Piyush's AI Representative</h1>
+                    <p class="welcome-desc">
+                        A RAG-grounded interface to explore Piyush Joshi's resume, public GitHub repositories, background, skills, and book a verified interview slots directly.
+                    </p>
+                    <div class="suggestion-grid">
+                        <div class="suggestion-card" onclick="sendSuggestion('Why are you the right person for the AI Engineer role?')">
+                            <span class="suggestion-header">Role Fit</span>
+                            <span class="suggestion-text">"Why are you the right person for this AI Engineer role?"</span>
+                        </div>
+                        <div class="suggestion-card" onclick="sendSuggestion('What public GitHub repositories have you built?')">
+                            <span class="suggestion-header">GitHub Code</span>
+                            <span class="suggestion-text">"Tell me about your public GitHub projects and design tradeoffs."</span>
+                        </div>
+                        <div class="suggestion-card" onclick="sendSuggestion('Tell me about your experience and skills.')">
+                            <span class="suggestion-header">Resume Detail</span>
+                            <span class="suggestion-text">"What is your education, experience, and core stack?"</span>
+                        </div>
+                        <div class="suggestion-card" onclick="sendSuggestion('Check availability and book a slot.')">
+                            <span class="suggestion-header">Meeting Booking</span>
+                            <span class="suggestion-text">"Show me your calendar availability to book a call."</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-area">
+                <div class="input-wrapper">
+                    <div class="input-row">
+                        <textarea id="chat-textarea" class="chat-input" placeholder="Type a message..." rows="1"></textarea>
+                        <button id="send-button" class="send-btn" disabled>
+                            <i data-lucide="arrow-up" style="width: 16px; height: 16px;"></i>
+                        </button>
+                    </div>
+                    <div class="input-tools">
+                        <div class="tool-chips">
+                            <div class="tool-chip" onclick="sendSuggestion('Who is Piyush?')">
+                                <i data-lucide="help-circle" style="width: 10px; height: 10px;"></i>
+                                <span>About</span>
+                            </div>
+                            <div class="tool-chip" id="book-tool-chip">
+                                <i data-lucide="calendar" style="width: 10px; height: 10px;"></i>
+                                <span>Book Slot</span>
+                            </div>
+                        </div>
+                        <span class="disclaimer-text">Grounded in actual repositories and CV.</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 class="modal-title">Voice & API Settings</h3>
+                <button class="modal-close" id="settings-close">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
+            </div>
+            <div class="form-group">
+                <label>Vapi Public Key (Optional)</label>
+                <input type="text" id="vapi-key-input" class="form-input" placeholder="Your Vapi Public Key">
+            </div>
+            <div class="form-group">
+                <label>Vapi Agent ID (Optional)</label>
+                <input type="text" id="vapi-agent-input" class="form-input" placeholder="Your Vapi Agent ID">
+            </div>
+            <button class="booking-submit-btn" id="settings-save">Save Configuration</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // DOM elements
+        const chatTextarea = document.getElementById('chat-textarea');
+        const sendButton = document.getElementById('send-button');
+        const messagesContainer = document.getElementById('messages-container');
+        const welcomeView = document.getElementById('welcome-view');
+        const clearBtn = document.getElementById('clear-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const settingsClose = document.getElementById('settings-close');
+        const settingsSave = document.getElementById('settings-save');
+        const checkSlotsNav = document.getElementById('check-slots-nav');
+        const bookToolChip = document.getElementById('book-tool-chip');
+        
+        const voiceCallBtn = document.getElementById('voice-call-btn');
+        const voiceBtnText = document.getElementById('voice-btn-text');
+
+        // Chat state
+        let conversationHistory = [];
+        let isChatLoading = false;
+
+        // Vapi Voice State
+        let vapi = null;
+        let isVoiceCallActive = false;
+        let vapiPublicKey = localStorage.getItem('VAPI_PUBLIC_KEY') || 'e6ff6412-f0b4-4b53-b248-d3c5f49e4d0d'; // Fallback demo key
+        let vapiAgentId = localStorage.getItem('VAPI_AGENT_ID') || 'a8837e3d-d6a5-4eb8-8c10-ecb864a66e4a';   // Fallback demo agent
+
+        // Textarea auto-resize
+        chatTextarea.addEventListener('input', () => {
+            chatTextarea.style.height = '24px';
+            chatTextarea.style.height = Math.min(chatTextarea.scrollHeight, 120) + 'px';
+            sendButton.disabled = chatTextarea.value.trim() === '';
+        });
+
+        chatTextarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendButton.addEventListener('click', () => {
+            sendMessage();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            conversationHistory = [];
+            messagesContainer.innerHTML = '';
+            messagesContainer.appendChild(welcomeView);
+            welcomeView.style.display = 'flex';
+        });
+
+        // Open/Close settings
+        settingsBtn.addEventListener('click', () => {
+            document.getElementById('vapi-key-input').value = vapiPublicKey;
+            document.getElementById('vapi-agent-input').value = vapiAgentId;
+            settingsModal.style.display = 'flex';
+        });
+
+        settingsClose.addEventListener('click', () => {
+            settingsModal.style.display = 'none';
+        });
+
+        settingsSave.addEventListener('click', () => {
+            vapiPublicKey = document.getElementById('vapi-key-input').value;
+            vapiAgentId = document.getElementById('vapi-agent-input').value;
+            localStorage.setItem('VAPI_PUBLIC_KEY', vapiPublicKey);
+            localStorage.setItem('VAPI_AGENT_ID', vapiAgentId);
+            settingsModal.style.display = 'none';
+            alert('Settings Saved! Click call button to test voice.');
+            initializeVapi();
+        });
+
+        // Initialize Vapi Browser call SDK
+        function initializeVapi() {
+            if (vapiPublicKey && vapiAgentId) {
+                try {
+                    vapi = new Vapi(vapiPublicKey);
+                    
+                    vapi.on('call-start', () => {
+                        isVoiceCallActive = true;
+                        voiceCallBtn.classList.add('active');
+                        voiceBtnText.innerText = "Active Call (Hang Up)";
+                        lucide.createIcons();
+                    });
+                    
+                    vapi.on('call-end', () => {
+                        isVoiceCallActive = false;
+                        voiceCallBtn.classList.remove('active');
+                        voiceBtnText.innerText = "Call Representative";
+                        lucide.createIcons();
+                    });
+                    
+                    vapi.on('error', (err) => {
+                        console.error("Vapi Error:", err);
+                        isVoiceCallActive = false;
+                        voiceCallBtn.classList.remove('active');
+                        voiceBtnText.innerText = "Call Representative";
+                        lucide.createIcons();
+                    });
+                } catch (e) {
+                    console.error("Failed to initialize Vapi:", e);
+                }
+            }
+        }
+
+        initializeVapi();
+
+        voiceCallBtn.addEventListener('click', () => {
+            if (!vapi) {
+                alert("Please click 'Settings' and enter your Vapi credentials first!");
+                return;
+            }
+            if (isVoiceCallActive) {
+                vapi.stop();
+            } else {
+                voiceBtnText.innerText = "Connecting...";
+                vapi.start(vapiAgentId);
+            }
+        });
+
+        // Send a suggestion
+        function sendSuggestion(text) {
+            chatTextarea.value = text;
+            chatTextarea.style.height = '24px';
+            sendButton.disabled = false;
+            sendMessage();
+        }
+
+        // Render loading bubble
+        function appendLoadingBubble() {
+            const row = document.createElement('div');
+            row.className = 'message-row bot';
+            row.id = 'chat-loading-bubble';
+            row.innerHTML = `
+                <div class="msg-sender">
+                    <i data-lucide="sparkles" style="width: 10px; height: 10px; color: var(--accent);"></i>
+                    <span>Assistant</span>
+                </div>
+                <div class="loading-bubble">
+                    <div class="dot-pulse">
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(row);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            lucide.createIcons();
+        }
+
+        function removeLoadingBubble() {
+            const bubble = document.getElementById('chat-loading-bubble');
+            if (bubble) bubble.remove();
+        }
+
+        // Send message function
+        async function sendMessage() {
+            const text = chatTextarea.value.trim();
+            if (!text || isChatLoading) return;
+
+            // Clear input
+            chatTextarea.value = '';
+            chatTextarea.style.height = '24px';
+            sendButton.disabled = true;
+
+            // Hide welcome panel
+            welcomeView.style.display = 'none';
+
+            // Append User Message
+            const userRow = document.createElement('div');
+            userRow.className = 'message-row user';
+            userRow.innerHTML = `
+                <div class="msg-sender">
+                    <span>User</span>
+                </div>
+                <div class="message-bubble">
+                    ${text}
+                </div>
+            `;
+            messagesContainer.appendChild(userRow);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            isChatLoading = true;
+            appendLoadingBubble();
+
+            try {
+                // Check if user is asking to see slots/availability directly
+                const lowerText = text.toLowerCase();
+                const isBookingIntent = lowerText.includes("book") || lowerText.includes("calendar") || lowerText.includes("slot") || lowerText.includes("schedule") || lowerText.includes("interview") || lowerText.includes("availability");
+
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        history: conversationHistory
+                    })
+                });
+
+                const data = await response.json();
+                removeLoadingBubble();
+
+                if (data.success) {
+                    const reply = data.response;
+                    
+                    // Add to history
+                    conversationHistory.push({ role: "user", content: text });
+                    conversationHistory.push({ role: "assistant", content: reply });
+
+                    // Append Bot Message
+                    const botRow = document.createElement('div');
+                    botRow.className = 'message-row bot';
+                    
+                    // Render Markdown
+                    const htmlContent = marked.parse(reply);
+                    botRow.innerHTML = `
+                        <div class="msg-sender">
+                            <i data-lucide="sparkles" style="width: 10px; height: 10px; color: var(--accent);"></i>
+                            <span>Assistant</span>
+                        </div>
+                        <div class="message-bubble">
+                            ${htmlContent}
+                        </div>
+                    `;
+                    messagesContainer.appendChild(botRow);
+                    
+                    // If booking intent, fetch slots and display widget alongside bot message
+                    if (isBookingIntent || reply.toLowerCase().includes("available slots")) {
+                        await displayCalendarWidget(botRow);
+                    }
+                    
+                    Prism.highlightAll();
+                    lucide.createIcons();
+                } else {
+                    appendSystemMessage("Sorry, I encountered an issue retrieving that answer: " + data.error);
+                }
+            } catch (err) {
+                removeLoadingBubble();
+                appendSystemMessage("Connection failed. Ensure the local backend server is running.");
+            } finally {
+                isChatLoading = false;
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+        }
+
+        function appendSystemMessage(text) {
+            const row = document.createElement('div');
+            row.className = 'message-row bot';
+            row.innerHTML = `
+                <div class="msg-sender" style="color: #ef4444;">
+                    <i data-lucide="alert-circle" style="width: 10px; height: 10px;"></i>
+                    <span>System Error</span>
+                </div>
+                <div class="message-bubble" style="border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05);">
+                    ${text}
+                </div>
+            `;
+            messagesContainer.appendChild(row);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            lucide.createIcons();
+        }
+
+        // Fetch and Render Calendar Slots
+        async function displayCalendarWidget(parentElement) {
+            try {
+                const response = await fetch('/api/slots');
+                const data = await response.json();
+                
+                if (data.success && data.slots && data.slots.length > 0) {
+                    const widget = document.createElement('div');
+                    widget.className = 'calendar-widget';
+                    
+                    let slotsHtml = '';
+                    data.slots.forEach(slot => {
+                        slotsHtml += `
+                            <button class="slot-btn" onclick="selectSlot('${slot.start}', '${slot.end}', '${slot.formatted}', this)">
+                                <span>${slot.formatted}</span>
+                                <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+                            </button>
+                        `;
+                    });
+
+                    widget.innerHTML = `
+                        <div class="cal-header">
+                            <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--accent);"></i>
+                            <span>Schedule Interview Call</span>
+                        </div>
+                        <div class="slots-container">
+                            ${slotsHtml}
+                        </div>
+                        <div class="booking-form" id="booking-form-box" style="display: none;">
+                            <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Selected slot: <span id="selected-slot-text" style="color: var(--accent);"></span></h4>
+                            <div class="form-group">
+                                <label>Your Full Name</label>
+                                <input type="text" id="booking-name" class="form-input" placeholder="e.g. John Doe" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Your Email Address</label>
+                                <input type="email" id="booking-email" class="form-input" placeholder="e.g. john@company.com" required>
+                            </div>
+                            <button class="booking-submit-btn" id="confirm-booking-btn">
+                                <i data-lucide="check-circle" style="width: 14px; height: 14px;"></i>
+                                <span>Confirm Interview Booking</span>
+                            </button>
+                        </div>
+                    `;
+                    
+                    parentElement.appendChild(widget);
+                    lucide.createIcons();
+                }
+            } catch (err) {
+                console.error("Failed to render slots", err);
+            }
+        }
+
+        // Form handler state variables
+        let selectedStart = '';
+        let selectedEnd = '';
+
+        function selectSlot(start, end, formatted, btnElement) {
+            selectedStart = start;
+            selectedEnd = end;
+            
+            // Highlight selected button
+            const container = btnElement.parentElement;
+            container.querySelectorAll('.slot-btn').forEach(btn => {
+                btn.style.background = 'rgba(99, 102, 241, 0.08)';
+            });
+            btnElement.style.background = 'var(--accent-gradient)';
+            
+            const formBox = container.nextElementSibling; // booking-form-box
+            document.getElementById('selected-slot-text').innerText = formatted;
+            formBox.style.display = 'flex';
+            
+            // Set listener
+            document.getElementById('confirm-booking-btn').onclick = () => submitBooking(formBox);
+        }
+
+        async function submitBooking(formBox) {
+            const name = document.getElementById('booking-name').value.trim();
+            const email = document.getElementById('booking-email').value.trim();
+
+            if (!name || !email) {
+                alert("Please fill in your Name and Email address.");
+                return;
+            }
+
+            formBox.innerHTML = `<div style="text-align:center; padding:12px; font-size:13px; color:var(--text-muted);">
+                <i class="animate-spin" data-lucide="loader-2" style="width: 16px; height: 16px; display:inline-block; margin-bottom:6px;"></i><br>
+                Booking your slot...
+            </div>`;
+            lucide.createIcons();
+
+            try {
+                const response = await fetch('/api/book', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        start_time: selectedStart,
+                        end_time: selectedEnd
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    const booking = data.booking;
+                    formBox.innerHTML = `
+                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px; font-size:13px;">
+                            <span style="color: #10b981; font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                                <i data-lucide="check" style="width:14px; height:14px;"></i> Interview Confirmed!
+                            </span>
+                            <p style="color:var(--text-main); margin-bottom:6px;">A meeting is confirmed for <b>${booking.formatted_time}</b>.</p>
+                            <p style="color:var(--text-muted); font-size:11px;">Booking ID: <b>${booking.booking_id}</b> (${booking.provider})</p>
+                        </div>
+                    `;
+                    // Push booking success to history
+                    conversationHistory.push({
+                        role: "system",
+                        content: `User booked an interview: Name: ${name}, Email: ${email}, Time: ${booking.formatted_time}, Booking ID: ${booking.booking_id}`
+                    });
+                } else {
+                    formBox.innerHTML = `<div style="color:#ef4444; font-size:13px; padding:8px;">Error: ${data.error}</div>`;
+                }
+                lucide.createIcons();
+            } catch (err) {
+                formBox.innerHTML = `<div style="color:#ef4444; font-size:13px; padding:8px;">Booking request failed.</div>`;
+            }
+        }
+
+        // Trigger slot check via Nav Links
+        checkSlotsNav.addEventListener('click', () => {
+            sendSuggestion("Check availability and show me slots.");
+        });
+        
+        bookToolChip.addEventListener('click', () => {
+            sendSuggestion("Propose available interview slots.");
+        });
+    </script>
+</body>
+</html>
