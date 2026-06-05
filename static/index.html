@@ -474,6 +474,18 @@
         }
 
         /* Markdown Styles inside message bubbles */
+        .message-bubble a {
+            color: var(--accent);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            font-weight: 500;
+            transition: opacity 0.2s;
+        }
+
+        .message-bubble a:hover {
+            opacity: 0.8;
+        }
+
         .message-bubble p {
             margin-bottom: 12px;
         }
