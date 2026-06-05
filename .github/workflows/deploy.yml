@@ -24,21 +24,17 @@ jobs:
           script: |
             # Navigate to application folder (defaulting to user home dir)
             PROJECT_DIR="/home/${{ secrets.EC2_USERNAME }}/rag_project_system"
-            if [ -d "$PROJECT_DIR" ]; then
-              cd "$PROJECT_DIR"
-              # Pull the latest changes
-              git pull origin main
-              
-              # Re-create the .env file from secrets if provided
-              if [ ! -z "${{ secrets.ENV_FILE_CONTENT }}" ]; then
-                echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
-              fi
-              
-              # Run the deployment shell script
-              chmod +x scripts/deploy.sh
-              ./scripts/deploy.sh
-            else
-              echo "Error: Project directory $PROJECT_DIR not found on EC2 instance."
-              echo "Please clone the repository to $PROJECT_DIR on your EC2 instance first."
-              exit 1
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "Project directory not found. Cloning repository..."
+              git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git "$PROJECT_DIR"
             fi
+            
+            cd "$PROJECT_DIR"
+            git pull origin main
+            
+            if [ ! -z "${{ secrets.ENV_FILE_CONTENT }}" ]; then
+              echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
+            fi
+            
+            chmod +x scripts/deploy.sh
+            ./scripts/deploy.sh
