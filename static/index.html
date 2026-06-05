@@ -653,36 +653,98 @@
             border-bottom: 1px solid var(--border-glass);
         }
 
-        .slots-container {
+        .calendar-dates-row {
+            display: flex;
+            gap: 8px;
             padding: 12px;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--border-glass);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        .calendar-dates-row::-webkit-scrollbar {
+            height: 4px;
+        }
+        .calendar-dates-row::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .date-tab {
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            max-height: 220px;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 65px;
+            height: 58px;
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .date-tab:hover {
+            border-color: rgba(25, 161, 134, 0.4);
+            background: rgba(25, 161, 134, 0.05);
+            color: var(--text-main);
+        }
+
+        .date-tab.active {
+            border-color: var(--accent);
+            background: rgba(25, 161, 134, 0.12);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .date-tab-day {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+
+        .date-tab-num {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .calendar-slots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+            gap: 8px;
+            padding: 12px;
+            max-height: 180px;
             overflow-y: auto;
         }
 
-        .slot-btn {
-            background: rgba(25, 161, 134, 0.05);
-            border: 1px solid rgba(25, 161, 134, 0.15);
+        .time-slot-btn {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-glass);
             border-radius: 6px;
-            padding: 8px 12px;
-            text-align: left;
+            padding: 8px;
+            text-align: center;
             color: var(--text-main);
+            font-size: 12px;
             font-family: var(--font-body);
-            font-weight: 500;
-            font-size: 12.5px;
             cursor: pointer;
             transition: all 0.2s;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
-        .slot-btn:hover {
-            background: var(--accent);
+        .time-slot-btn:hover {
+            border-color: var(--accent);
+            background: rgba(25, 161, 134, 0.05);
+            color: var(--accent);
+        }
+
+        .time-slot-btn.active {
+            background: var(--accent-gradient);
             border-color: transparent;
             color: #fff;
+            font-weight: 600;
         }
 
         .booking-form {
@@ -1020,9 +1082,13 @@
                     <i data-lucide="message-square" style="width: 18px; height: 18px;"></i>
                     <span>Conversational Chat</span>
                 </div>
+                <a href="/calendar" class="nav-link">
+                    <i data-lucide="calendar-days" style="width: 18px; height: 18px;"></i>
+                    <span>Schedule Interview</span>
+                </a>
                 <div class="nav-link" id="check-slots-nav">
                     <i data-lucide="calendar" style="width: 18px; height: 18px;"></i>
-                    <span>Check Availability</span>
+                    <span>Quick Book (Chat)</span>
                 </div>
                 <a href="/static/evals_report.pdf" target="_blank" class="nav-link">
                     <i data-lucide="file-text" style="width: 18px; height: 18px;"></i>
@@ -1564,12 +1630,37 @@
                     const widget = document.createElement('div');
                     widget.className = 'calendar-widget';
                     
-                    let slotsHtml = '';
+                    // Group slots by date key (YYYY-MM-DD)
+                    const slotsByDate = {};
                     data.slots.forEach(slot => {
-                        slotsHtml += `
-                            <button class="slot-btn" onclick="selectSlot('${slot.start}', '${slot.end}', '${slot.formatted}', this)">
-                                <span>${slot.formatted}</span>
-                                <i data-lucide="chevron-right" style="width: 14px; height: 14px;"></i>
+                        const dateKey = slot.start.split('T')[0];
+                        if (!slotsByDate[dateKey]) {
+                            slotsByDate[dateKey] = [];
+                        }
+                        slotsByDate[dateKey].push(slot);
+                    });
+
+                    const dateKeys = Object.keys(slotsByDate).sort();
+                    
+                    // Helper to format tab dates
+                    const formatTabDate = (dateStr) => {
+                        const d = new Date(dateStr);
+                        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        return {
+                            dayName: days[d.getDay()],
+                            dateLabel: `${months[d.getMonth()]} ${d.getDate()}`
+                        };
+                    };
+
+                    // Render date tabs HTML
+                    let datesHtml = '';
+                    dateKeys.forEach((dateKey, index) => {
+                        const info = formatTabDate(dateKey);
+                        datesHtml += `
+                            <button class="date-tab ${index === 0 ? 'active' : ''}" data-date="${dateKey}">
+                                <span class="date-tab-day">${info.dayName}</span>
+                                <span class="date-tab-num">${info.dateLabel}</span>
                             </button>
                         `;
                     });
@@ -1579,9 +1670,10 @@
                             <i data-lucide="calendar" style="width: 14px; height: 14px; color: var(--accent);"></i>
                             <span>Schedule Interview Call</span>
                         </div>
-                        <div class="slots-container">
-                            ${slotsHtml}
+                        <div class="calendar-dates-row">
+                            ${datesHtml}
                         </div>
+                        <div class="calendar-slots-grid"></div>
                         <div class="booking-form" id="booking-form-box" style="display: none;">
                             <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Selected slot: <span id="selected-slot-text" style="color: var(--accent);"></span></h4>
                             <div class="form-group">
@@ -1602,91 +1694,128 @@
                             </button>
                         </div>
                     `;
-                    
+
                     parentElement.appendChild(widget);
                     lucide.createIcons();
+
+                    const datesRow = widget.querySelector('.calendar-dates-row');
+                    const slotsGrid = widget.querySelector('.calendar-slots-grid');
+                    const bookingForm = widget.querySelector('.booking-form');
+                    const selectedSlotText = widget.querySelector('#selected-slot-text');
+                    const confirmBookingBtn = widget.querySelector('#confirm-booking-btn');
+
+                    let activeStart = '';
+                    let activeEnd = '';
+                    let activeFormatted = '';
+
+                    const renderSlotsForDate = (dateKey) => {
+                        const slots = slotsByDate[dateKey] || [];
+                        slotsGrid.innerHTML = '';
+                        bookingForm.style.display = 'none';
+
+                        slots.forEach(slot => {
+                            const d = new Date(slot.start);
+                            let hours = d.getHours();
+                            const minutes = String(d.getMinutes()).padStart(2, '0');
+                            const ampm = hours >= 12 ? 'PM' : 'AM';
+                            hours = hours % 12;
+                            hours = hours ? hours : 12;
+                            const timeLabel = `${hours}:${minutes} ${ampm}`;
+
+                            const btn = document.createElement('button');
+                            btn.className = 'time-slot-btn';
+                            btn.innerText = timeLabel;
+                            btn.onclick = () => {
+                                slotsGrid.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('active'));
+                                btn.classList.add('active');
+                                
+                                activeStart = slot.start;
+                                activeEnd = slot.end;
+                                activeFormatted = slot.formatted;
+                                
+                                selectedSlotText.innerText = slot.formatted;
+                                bookingForm.style.display = 'flex';
+                                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                            };
+                            slotsGrid.appendChild(btn);
+                        });
+                    };
+
+                    datesRow.querySelectorAll('.date-tab').forEach(tab => {
+                        tab.onclick = () => {
+                            datesRow.querySelectorAll('.date-tab').forEach(t => t.classList.remove('active'));
+                            tab.classList.add('active');
+                            const dateKey = tab.getAttribute('data-date');
+                            renderSlotsForDate(dateKey);
+                        };
+                    });
+
+                    if (dateKeys.length > 0) {
+                        renderSlotsForDate(dateKeys[0]);
+                    }
+
+                    confirmBookingBtn.onclick = async () => {
+                        const nameInput = widget.querySelector('#booking-name');
+                        const emailInput = widget.querySelector('#booking-email');
+                        const titleInput = widget.querySelector('#booking-title');
+
+                        const name = nameInput.value.trim();
+                        const email = emailInput.value.trim();
+                        const title = titleInput.value.trim();
+
+                        if (!name || !email) {
+                            alert("Please fill in your Name and Email address.");
+                            return;
+                        }
+
+                        bookingForm.innerHTML = `<div style="text-align:center; padding:12px; font-size:13px; color:var(--text-muted);">
+                            <i class="animate-spin" data-lucide="loader-2" style="width: 16px; height: 16px; display:inline-block; margin-bottom:6px;"></i><br>
+                            Booking your slot...
+                        </div>`;
+                        lucide.createIcons();
+
+                        try {
+                            const res = await fetch('/api/book', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({
+                                    name: name,
+                                    email: email,
+                                    start_time: activeStart,
+                                    end_time: activeEnd,
+                                    title: title || 'Interview with Piyush Joshi'
+                                })
+                            });
+                            
+                            const data = await res.json();
+                            if (data.success) {
+                                const booking = data.booking;
+                                bookingForm.innerHTML = `
+                                    <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px; font-size:13px;">
+                                        <span style="color: #10b981; font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                                            <i data-lucide="check" style="width:14px; height:14px;"></i> Interview Confirmed!
+                                        </span>
+                                        <p style="color:var(--text-main); margin-bottom:6px;">A meeting is confirmed for <b>${booking.formatted_time}</b>.</p>
+                                        <p style="color:var(--text-muted); font-size:11px;">Booking ID: <b>${booking.booking_id}</b> (${booking.provider})</p>
+                                    </div>
+                                `;
+                                conversationHistory.push({
+                                    role: "system",
+                                    content: `User booked an interview: Name: ${name}, Email: ${email}, Time: ${booking.formatted_time}, Booking ID: ${booking.booking_id}`
+                                });
+                                saveChatHistory();
+                            } else {
+                                bookingForm.innerHTML = `<div style="color:#ef4444; font-size:13px; padding:8px;">Error: ${data.error}</div>`;
+                            }
+                            lucide.createIcons();
+                        } catch (err) {
+                            bookingForm.innerHTML = `<div style="color:#ef4444; font-size:13px; padding:8px;">Booking request failed.</div>`;
+                        }
+                    };
+
                 }
             } catch (err) {
                 console.error("Failed to render slots", err);
-            }
-        }
-
-        // Form handler state variables
-        let selectedStart = '';
-        let selectedEnd = '';
-
-        function selectSlot(start, end, formatted, btnElement) {
-            selectedStart = start;
-            selectedEnd = end;
-            
-            const widget = btnElement.closest('.calendar-widget');
-            const container = btnElement.parentElement;
-            container.querySelectorAll('.slot-btn').forEach(btn => {
-                btn.style.background = 'rgba(99, 102, 241, 0.08)';
-            });
-            btnElement.style.background = 'var(--accent-gradient)';
-            
-            const formBox = widget.querySelector('.booking-form');
-            widget.querySelector('#selected-slot-text').innerText = formatted;
-            formBox.style.display = 'flex';
-            
-            widget.querySelector('#confirm-booking-btn').onclick = () => submitBooking(formBox);
-        }
-
-        async function submitBooking(formBox) {
-            const widget = formBox.closest('.calendar-widget');
-            const name = widget.querySelector('#booking-name').value.trim();
-            const email = widget.querySelector('#booking-email').value.trim();
-            const title = widget.querySelector('#booking-title').value.trim();
-
-            if (!name || !email) {
-                alert("Please fill in your Name and Email address.");
-                return;
-            }
-
-            formBox.innerHTML = `<div style="text-align:center; padding:12px; font-size:13px; color:var(--text-muted);">
-                <i class="animate-spin" data-lucide="loader-2" style="width: 16px; height: 16px; display:inline-block; margin-bottom:6px;"></i><br>
-                Booking your slot...
-            </div>`;
-            lucide.createIcons();
-
-            try {
-                const response = await fetch('/api/book', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        name: name,
-                        email: email,
-                        start_time: selectedStart,
-                        end_time: selectedEnd,
-                        title: title || 'Interview with Piyush Joshi'
-                    })
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    const booking = data.booking;
-                    formBox.innerHTML = `
-                        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 12px; font-size:13px;">
-                            <span style="color: #10b981; font-weight:700; display:flex; align-items:center; gap:6px; margin-bottom:4px;">
-                                <i data-lucide="check" style="width:14px; height:14px;"></i> Interview Confirmed!
-                            </span>
-                            <p style="color:var(--text-main); margin-bottom:6px;">A meeting is confirmed for <b>${booking.formatted_time}</b>.</p>
-                            <p style="color:var(--text-muted); font-size:11px;">Booking ID: <b>${booking.booking_id}</b> (${booking.provider})</p>
-                        </div>
-                    `;
-                    // Push booking success to history
-                    conversationHistory.push({
-                        role: "system",
-                        content: `User booked an interview: Name: ${name}, Email: ${email}, Time: ${booking.formatted_time}, Booking ID: ${booking.booking_id}`
-                    });
-                    saveChatHistory();
-                } else {
-                    formBox.innerHTML = `<div style="color:#ef4444; font-size:13px; padding:8px;">Error: ${data.error}</div>`;
-                }
-                lucide.createIcons();
-            } catch (err) {
-                formBox.innerHTML = `<div style="color:#ef4444; font-size:13px; padding:8px;">Booking request failed.</div>`;
             }
         }
 
