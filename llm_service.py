@@ -348,9 +348,9 @@ class LLMService:
 
     async def generate_response_stream(self, query: str, history: List[Dict[str, str]] = None) -> AsyncGenerator[str, None]:
         response_text = await self.generate_response(query, history)
-        chunk_size = 4
+        chunk_size = 12
         for i in range(0, len(response_text), chunk_size):
             yield response_text[i:i+chunk_size]
-            await asyncio.sleep(0.015)
+            await asyncio.sleep(0.01)
 
 llm_service = LLMService()
