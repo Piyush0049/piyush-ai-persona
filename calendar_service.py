@@ -39,24 +39,20 @@ class CalendarService:
     def get_available_slots(self, date_str: str = None) -> List[Dict[str, str]]:
         """
         Propose slots for the given date. If no date is given, proposes slots for
-        the next 3 days.
-        Slots are 30 mins each:
-        - 10:00 AM - 10:30 AM
-        - 02:00 PM - 02:30 PM
-        - 04:00 PM - 04:30 PM
+        the next 14 workdays (full 2 weeks).
         """
         if settings.CAL_API_KEY and settings.CAL_EVENT_TYPE_ID:
             try:
                 url = f"https://api.cal.com/v1/slots?apiKey={settings.CAL_API_KEY}&eventTypeId={settings.CAL_EVENT_TYPE_ID}"
                 start_date = datetime.date.today().isoformat()
-                end_date = (datetime.date.today() + datetime.timedelta(days=4)).isoformat()
+                end_date = (datetime.date.today() + datetime.timedelta(days=14)).isoformat()
                 response = httpx.get(f"{url}&startTime={start_date}T00:00:00Z&endTime={end_date}T23:59:59Z", timeout=5.0)
                 if response.status_code == 200:
                     slots_data = response.json().get("slots", {})
                     slots = []
                     kolkata_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
                     for date, day_slots in slots_data.items():
-                        for slot in day_slots[:3]:
+                        for slot in day_slots:
                             dt_utc = datetime.datetime.fromisoformat(slot["time"].replace("Z", "+00:00"))
                             dt_kolkata = dt_utc.astimezone(kolkata_tz)
                             slots.append({
@@ -80,17 +76,20 @@ class CalendarService:
                 pass
 
         slots = []
-        days_to_check = 1 if date_str else 3
+        days_to_check = 1 if date_str else 14  # Show 14 workdays
         current_day = base_date
         max_days_scanned = 0
+        times = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00"]
 
-        while len(slots) < 6 and len(slots) < (days_to_check * 3) and max_days_scanned < 30:
+        while max_days_scanned < (30 if not date_str else 1):
+            if not date_str and len(slots) >= (days_to_check * len(times)):
+                break
+                
             max_days_scanned += 1
             if current_day.weekday() in (5, 6):
                 current_day += datetime.timedelta(days=1)
                 continue
                 
-            times = ["10:00", "14:00", "16:00"]
             for t in times:
                 hr, mn = map(int, t.split(":"))
                 start_dt = datetime.datetime.combine(current_day, datetime.time(hr, mn))
@@ -116,6 +115,7 @@ class CalendarService:
         """
         Books a meeting. If Cal.com or Google Calendar is configured, updates them.
         Always saves locally in calendar_db.json.
+        Prevents double bookings.
         """
         try:
             start_dt = datetime.datetime.fromisoformat(start_time.replace("Z", "+00:00"))
@@ -123,6 +123,19 @@ class CalendarService:
         except Exception:
             start_dt = datetime.datetime.fromisoformat(start_time)
             end_dt = datetime.datetime.fromisoformat(end_time)
+
+        # Check for conflicts with existing bookings
+        existing_bookings = self.get_booked_slots()
+        for booking in existing_bookings:
+            try:
+                existing_start = datetime.datetime.fromisoformat(booking["start"].replace("Z", "+00:00"))
+                existing_end = datetime.datetime.fromisoformat(booking["end"].replace("Z", "+00:00"))
+
+                # Check if time slots overlap
+                if (start_dt < existing_end and end_dt > existing_start):
+                    raise Exception(f"Time slot already booked. Please choose another time.")
+            except KeyError:
+                continue
 
         booking_id = f"book_{int(datetime.datetime.now().timestamp())}"
         
