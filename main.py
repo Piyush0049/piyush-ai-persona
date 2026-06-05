@@ -178,7 +178,10 @@ async def serve_index():
     index_path = "static/index.html"
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
+            return HTMLResponse(
+                content=f.read(),
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+            )
     return HTMLResponse(content="<h1>Frontend file static/index.html not found. Please compile or create it.</h1>")
 
 if __name__ == "__main__":
