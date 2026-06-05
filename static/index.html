@@ -1197,6 +1197,18 @@
             sendMessage();
         });
 
+        // Open external links in a new tab
+        messagesContainer.addEventListener('click', (e) => {
+            const anchor = e.target.closest('a');
+            if (anchor) {
+                const href = anchor.getAttribute('href');
+                if (href && (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('www.'))) {
+                    anchor.setAttribute('target', '_blank');
+                    anchor.setAttribute('rel', 'noopener noreferrer');
+                }
+            }
+        });
+
         clearBtn.addEventListener('click', () => {
             conversationHistory = [];
             messagesContainer.innerHTML = '';
