@@ -3,10 +3,9 @@ Description=FastAPI RAG Portfolio Application
 After=network.target
 
 [Service]
-# Replace 'ubuntu' with your EC2 username if different (e.g., 'ec2-user')
-User=ubuntu
-WorkingDirectory=/home/ubuntu/rag_project_system
-ExecStart=/home/ubuntu/rag_project_system/venv/bin/python main.py
+User=ec2-user
+WorkingDirectory=/home/ec2-user/rag_project_system
+ExecStart=/home/ec2-user/rag_project_system/venv/bin/python main.py
 Restart=always
 RestartSec=5
 StandardOutput=syslog
