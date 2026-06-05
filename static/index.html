@@ -1418,27 +1418,48 @@
                     })
                 });
 
-                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
                 removeLoadingBubble();
 
-                if (data.success) {
-                    const reply = data.response;
-                    
-                    // Add to history
-                    conversationHistory.push({ role: "user", content: text });
-                    conversationHistory.push({ role: "assistant", content: reply });
+                // Append empty bot message row
+                const botRow = document.createElement('div');
+                botRow.className = 'message-row bot';
+                botRow.innerHTML = `
+                    <div class="msg-sender">
+                        <i data-lucide="sparkles" style="width: 10px; height: 10px; color: var(--accent);"></i>
+                        <span>Assistant</span>
+                    </div>
+                    <div style="width: 100%;" class="bot-response-container">
+                        <div class="thinking-container"></div>
+                        <div class="message-bubble" style="display: none;"></div>
+                    </div>
+                `;
+                messagesContainer.appendChild(botRow);
+                lucide.createIcons();
 
-                    // Append Bot Message
-                    const botRow = document.createElement('div');
-                    botRow.className = 'message-row bot';
-                    
-                    // Parse response content into thinking and answer
+                const thinkingContainer = botRow.querySelector('.thinking-container');
+                const answerBubble = botRow.querySelector('.message-bubble');
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let reply = '';
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    reply += chunk;
+
+                    // Parse thinking and answer
                     const parsed = parseResponseContent(reply);
-                    
-                    let bubbleHtml = '';
+
                     if (parsed.thinking) {
-                        bubbleHtml += `
-                            <details class="thinking-details">
+                        thinkingContainer.innerHTML = `
+                            <details class="thinking-details" open>
                                 <summary class="thinking-summary">
                                     <i data-lucide="brain" style="width: 12px; height: 12px; margin-right: 6px; color: var(--text-muted);"></i>
                                     <span>Thinking Process</span>
@@ -1449,31 +1470,37 @@
                                 </div>
                             </details>
                         `;
+                    } else {
+                        thinkingContainer.innerHTML = '';
                     }
-                    
-                    bubbleHtml += `<div class="message-bubble">${marked.parse(parsed.answer)}</div>`;
-                    
-                    botRow.innerHTML = `
-                        <div class="msg-sender">
-                            <i data-lucide="sparkles" style="width: 10px; height: 10px; color: var(--accent);"></i>
-                            <span>Assistant</span>
-                        </div>
-                        <div style="width: 100%;">
-                            ${bubbleHtml}
-                        </div>
-                    `;
-                    messagesContainer.appendChild(botRow);
-                    
-                    // If booking intent, fetch slots and display widget alongside bot message
-                    if (isBookingIntent || reply.toLowerCase().includes("available slots")) {
-                        await displayCalendarWidget(botRow);
+
+                    if (parsed.answer) {
+                        answerBubble.innerHTML = marked.parse(parsed.answer);
+                        answerBubble.style.display = 'block';
+                    } else {
+                        answerBubble.style.display = 'none';
                     }
-                    
-                    Prism.highlightAll();
-                    lucide.createIcons();
-                } else {
-                    appendSystemMessage("Sorry, I encountered an issue retrieving that answer: " + data.error);
+
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 }
+
+                // Auto-collapse thinking process when streaming ends
+                const detailsElement = thinkingContainer.querySelector('.thinking-details');
+                if (detailsElement) {
+                    detailsElement.removeAttribute('open');
+                }
+
+                // Add to history
+                conversationHistory.push({ role: "user", content: text });
+                conversationHistory.push({ role: "assistant", content: reply });
+
+                // If booking intent, fetch slots and display widget alongside bot message
+                if (isBookingIntent || reply.toLowerCase().includes("available slots")) {
+                    await displayCalendarWidget(botRow);
+                }
+
+                Prism.highlightAll();
+                lucide.createIcons();
             } catch (err) {
                 removeLoadingBubble();
                 appendSystemMessage("Connection failed. Ensure the local backend server is running.");

@@ -41,12 +41,15 @@ async def api_chat(req: ChatRequest):
         history = req.history or []
         print(f"API Chat query: {query}")
         
-        response_text = await llm_service.generate_response(query, history)
-        
-        return JSONResponse({
-            "success": True,
-            "response": response_text
-        })
+        async def stream_generator():
+            try:
+                async for chunk in llm_service.generate_response_stream(query, history):
+                    yield chunk
+            except Exception as e:
+                print(f"Streaming error: {e}")
+                yield f"\n[STREAM_ERROR: {str(e)}]"
+                
+        return StreamingResponse(stream_generator(), media_type="text/plain")
     except Exception as e:
         print(f"API Chat Error: {e}")
         return JSONResponse({
