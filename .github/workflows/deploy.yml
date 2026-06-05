@@ -36,11 +36,13 @@ jobs:
             PROJECT_DIR="/home/${{ secrets.EC2_USERNAME }}/rag_project_system"
             if [ ! -d "$PROJECT_DIR" ]; then
               echo "Project directory not found. Cloning repository..."
-              git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git "$PROJECT_DIR"
+              git clone https://github.com/${{ github.repository }}.git "$PROJECT_DIR"
             fi
             
             cd "$PROJECT_DIR"
-            git pull origin main
+            git remote set-url origin https://github.com/${{ github.repository }}.git
+            git fetch origin main
+            git reset --hard origin/main
             
             if [ ! -z "$ENV_FILE_CONTENT" ]; then
               echo "$ENV_FILE_CONTENT" > .env
