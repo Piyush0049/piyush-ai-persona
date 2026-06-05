@@ -1,6 +1,7 @@
 import json
 import os
 
+
 projects_data = [
     {
         "name": "Pricesphere_web",
