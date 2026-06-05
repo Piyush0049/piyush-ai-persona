@@ -42,5 +42,9 @@ jobs:
               echo "${{ secrets.ENV_FILE_CONTENT }}" > .env
             fi
             
+            if [ ! -z "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" ]; then
+              echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > google_credentials.json
+            fi
+            
             chmod +x scripts/deploy.sh
             ./scripts/deploy.sh

@@ -1361,25 +1361,25 @@
             selectedStart = start;
             selectedEnd = end;
             
-            // Highlight selected button
+            const widget = btnElement.closest('.calendar-widget');
             const container = btnElement.parentElement;
             container.querySelectorAll('.slot-btn').forEach(btn => {
                 btn.style.background = 'rgba(99, 102, 241, 0.08)';
             });
             btnElement.style.background = 'var(--accent-gradient)';
             
-            const formBox = container.nextElementSibling; // booking-form-box
-            document.getElementById('selected-slot-text').innerText = formatted;
+            const formBox = widget.querySelector('.booking-form');
+            widget.querySelector('#selected-slot-text').innerText = formatted;
             formBox.style.display = 'flex';
             
-            // Set listener
-            document.getElementById('confirm-booking-btn').onclick = () => submitBooking(formBox);
+            widget.querySelector('#confirm-booking-btn').onclick = () => submitBooking(formBox);
         }
 
         async function submitBooking(formBox) {
-            const name = document.getElementById('booking-name').value.trim();
-            const email = document.getElementById('booking-email').value.trim();
-            const title = document.getElementById('booking-title').value.trim();
+            const widget = formBox.closest('.calendar-widget');
+            const name = widget.querySelector('#booking-name').value.trim();
+            const email = widget.querySelector('#booking-email').value.trim();
+            const title = widget.querySelector('#booking-title').value.trim();
 
             if (!name || !email) {
                 alert("Please fill in your Name and Email address.");

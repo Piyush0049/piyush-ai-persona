@@ -25,7 +25,8 @@ if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
     python3 -m venv venv
 fi
-
+# Ensure all files and directories are owned by ec2-user (fixes permission errors if previously run as root)
+sudo chown -R ec2-user:ec2-user /home/ec2-user/rag_project_system
 # 2. Activate virtual environment
 echo "Activating virtual environment..."
 source venv/bin/activate
