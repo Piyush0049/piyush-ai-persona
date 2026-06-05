@@ -54,7 +54,6 @@ class LLMService:
                 raise Exception(f"OpenAI API failed: {resp.text}")
 
     async def call_gemini(self, messages: List[Dict[str, str]]) -> str:
-        # Translate OpenAI format to Gemini format
         contents = []
         system_instruction = ""
         
@@ -115,7 +114,6 @@ class LLMService:
     async def call_bedrock(self, messages: List[Dict[str, str]]) -> str:
         import boto3
         
-        # Initialize Bedrock client
         kwargs = {"region_name": settings.AWS_REGION}
         if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
             kwargs["aws_access_key_id"] = settings.AWS_ACCESS_KEY_ID
@@ -124,7 +122,6 @@ class LLMService:
         try:
             client = boto3.client("bedrock-runtime", **kwargs)
             
-            # Format system instructions and conversation messages for Converse API
             system_prompts = []
             converse_messages = []
             
@@ -136,12 +133,9 @@ class LLMService:
                     if role not in ("user", "assistant"):
                         role = "user"
                     
-                    # Bedrock Converse API requires the first message to be from 'user'
                     if not converse_messages and role == "assistant":
                         continue
                         
-                    # Bedrock Converse API requires strictly alternating roles.
-                    # Merge consecutive messages with the same role.
                     if converse_messages and converse_messages[-1]["role"] == role:
                         converse_messages[-1]["content"][0]["text"] += "\n\n" + msg["content"]
                     else:
@@ -150,9 +144,6 @@ class LLMService:
                             "content": [{"text": msg["content"]}]
                         })
             
-            # Synchronous call executed inside an executor if async is needed, 
-            # but directly calling it is safe here since we are in an async route.
-            # To avoid blocking the event loop, we can run it in a thread pool.
             import asyncio
             loop = asyncio.get_event_loop()
             
@@ -173,7 +164,6 @@ class LLMService:
             raise Exception(f"AWS Bedrock API failed: {e}")
 
     async def run_llm(self, messages: List[Dict[str, str]]) -> str:
-        # Dynamic check of self.provider in case env changes during runtime
         provider = settings.LLM_PROVIDER
         if provider == "bedrock":
             return await self.call_bedrock(messages)
@@ -188,32 +178,25 @@ class LLMService:
         if history is None:
             history = []
 
-        # 1. Search RAG context
         context_chunks = rag_service.search(query, limit=4)
         context_str = ""
         for chunk in context_chunks:
             context_str += f"Source: {chunk['source']} ({chunk['url']})\nTitle: {chunk['title']}\nContent: {chunk['content']}\n---\n"
 
-        # 2. Build system prompt
         now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         sys_prompt = SYSTEM_PROMPT.format(current_time=now_str)
         sys_prompt += f"\n\nHere is relevant RAG Context about Piyush:\n{context_str}\n"
 
-        # 3. Setup conversation messages
         messages = [{"role": "system", "content": sys_prompt}]
         for h in history:
             messages.append(h)
         messages.append({"role": "user", "content": query})
 
-        # 4. Agent Loop for Tool Executions (max 3 turns to prevent loops)
         for turn in range(3):
             print(f"LLM Turn {turn + 1}...")
             response_text = await self.run_llm(messages)
             print(f"LLM Output: {response_text.strip()}")
 
-            # Check if there is a tool call in response
-            # Format: [TOOL_CALL: check_availability()]
-            # Format: [TOOL_CALL: book_meeting(name="Name", email="email@email.com", start_time="...", end_time="...")]
             tool_match = re.search(r'\[TOOL_CALL:\s*(\w+)\((.*?)\)\]', response_text)
             if not tool_match:
                 # No tool call, return final answer
@@ -222,7 +205,6 @@ class LLMService:
             tool_name = tool_match.group(1)
             tool_args_str = tool_match.group(2)
             
-            # Execute tool
             tool_result = ""
             if tool_name == "check_availability":
                 slots = calendar_service.get_available_slots()
@@ -234,9 +216,7 @@ class LLMService:
                     tool_result = "No slots are currently available on the calendar."
             
             elif tool_name == "book_meeting":
-                # Parse args
                 args = {}
-                # Extract args using regex name="val" or email="val"
                 for pair in re.finditer(r'(\w+)\s*=\s*["\'](.*?)["\']', tool_args_str):
                     args[pair.group(1)] = pair.group(2)
                 
@@ -256,12 +236,9 @@ class LLMService:
 
             print(f"Tool Result: {tool_result}")
             
-            # Add assistant's tool request and tool outcome to messages
             messages.append({"role": "assistant", "content": response_text})
             messages.append({"role": "user", "content": f"SYSTEM TOOL OUTPUT:\n{tool_result}\nNow present this result to the user naturally."})
 
-        # Return final fallback
         return response_text
 
-# Global LLM Service
 llm_service = LLMService()

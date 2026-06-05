@@ -14,7 +14,6 @@ class RAGService:
         self.load_and_index()
 
     def clean_text(self, text: str) -> str:
-        # Lowercase and clean special chars
         text = text.lower()
         text = re.sub(r'[^\w\s-]', '', text)
         return text
@@ -27,19 +26,15 @@ class RAGService:
         resume_path = os.path.join(self.data_dir, "resume.txt")
         github_path = os.path.join(self.data_dir, "github_repos.json")
         
-        # 1. Load Resume
         if os.path.exists(resume_path):
             with open(resume_path, "r", encoding="utf-8") as f:
                 resume_text = f.read()
             
-            # Chunk resume by section (demarcated by empty lines or lines with specific headers)
-            # Let's chunk the resume into logical blocks: Education, Experience, Projects, Skills
             sections = re.split(r'\n(?=Education|Experience|Projects|Technical Skills)', resume_text)
             for idx, sec in enumerate(sections):
                 sec = sec.strip()
                 if not sec:
                     continue
-                # Split large sections further if needed
                 if len(sec) > 1000:
                     subsections = sec.split("\n\n")
                     for s_idx, sub in enumerate(subsections):
@@ -63,7 +58,6 @@ class RAGService:
         else:
             print("Warning: resume.txt not found in data directory.")
 
-        # 2. Load GitHub Repos
         if os.path.exists(github_path):
             with open(github_path, "r", encoding="utf-8") as f:
                 repos = json.load(f)
@@ -75,7 +69,6 @@ class RAGService:
                 url = repo.get("url", "")
                 readme = repo.get("readme", "")
                 
-                # Metadata chunk
                 self.chunks.append({
                     "id": f"github_meta_{name}",
                     "source": f"GitHub Repository: {name}",
@@ -84,9 +77,8 @@ class RAGService:
                     "url": url
                 })
                 
-                # Split README into 800-character chunks with 200 overlap to keep context dense
                 if readme:
-                    readme_clean = re.sub(r'#+\s+', '', readme) # Clean header markers
+                    readme_clean = re.sub(r'#+\s+', '', readme)
                     chunk_size = 800
                     overlap = 200
                     start = 0
@@ -107,11 +99,9 @@ class RAGService:
         else:
             print("Warning: github_repos.json not found in data directory.")
 
-        # 3. Build TF-IDF Index
         if not self.chunks:
             return
 
-        # Count document frequencies
         df: Dict[str, int] = {}
         tf_docs: List[Dict[str, int]] = []
         
@@ -122,11 +112,9 @@ class RAGService:
                 tf[t] = tf.get(t, 0) + 1
             tf_docs.append(tf)
             
-            # Increment document frequency for unique tokens
             for t in set(tokens):
                 df[t] = df.get(t, 0) + 1
 
-        # Vocabulary & IDF
         n_docs = len(self.chunks)
         vocab_set = set(df.keys())
         self.vocab = {word: idx for idx, word in enumerate(vocab_set)}
@@ -134,11 +122,9 @@ class RAGService:
         for word, count in df.items():
             self.idf[word] = math.log((1 + n_docs) / (1 + count)) + 1
 
-        # Build document TF-IDF vectors (represented as sparse dictionaries)
         self.doc_vectors = []
         for tf in tf_docs:
             doc_vec: Dict[int, float] = {}
-            # Calculate length normalization
             length_sq = 0.0
             for word, term_freq in tf.items():
                 w_idx = self.vocab[word]
@@ -146,7 +132,6 @@ class RAGService:
                 doc_vec[w_idx] = val
                 length_sq += val * val
             
-            # Normalize vector
             length = math.sqrt(length_sq)
             if length > 0:
                 for w_idx in doc_vec:
@@ -158,13 +143,10 @@ class RAGService:
         if not self.chunks or not self.vocab:
             return []
 
-        # Tokenize query
         q_tokens = self.tokenize(query)
         if not q_tokens:
-            # Fallback: return first few chunks
             return self.chunks[:limit]
 
-        # Build query TF-IDF vector
         q_tf: Dict[str, int] = {}
         for t in q_tokens:
             q_tf[t] = q_tf.get(t, 0) + 1
@@ -183,30 +165,24 @@ class RAGService:
             for w_idx in q_vec:
                 q_vec[w_idx] /= q_length
 
-        # Calculate cosine similarity with all docs
         scores = []
         for d_idx, doc_vec in enumerate(self.doc_vectors):
             dot_product = 0.0
-            # Since vectors are sparse, iterate over query vector indices
             for w_idx, q_val in q_vec.items():
                 if w_idx in doc_vec:
                     dot_product += q_val * doc_vec[w_idx]
             
-            # Add semantic booster for exact repository title matches
             chunk = self.chunks[d_idx]
             boost = 0.0
-            # If the user mentions a specific repo name (e.g. "cal.com" or "blink-blog"), boost it
             for word in q_tokens:
                 if word in chunk["title"].lower() or word in chunk["source"].lower():
                     boost += 0.1
             
             scores.append((d_idx, dot_product + boost))
 
-        # Sort and select top results
         scores.sort(key=lambda x: x[1], reverse=True)
         results = []
         for d_idx, score in scores[:limit]:
-            # Only return chunks that have some match score, or fallback to first items if no matches at all
             results.append({
                 "chunk": self.chunks[d_idx],
                 "score": score
@@ -214,5 +190,4 @@ class RAGService:
             
         return [r["chunk"] for r in results if r["score"] > 0.0] or self.chunks[:limit]
 
-# Instantiate global service
 rag_service = RAGService()

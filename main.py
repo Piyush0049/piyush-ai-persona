@@ -15,7 +15,6 @@ from calendar_service import calendar_service
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
-# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,7 +23,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Request and Response schemas for Chat UI
 class ChatRequest(BaseModel):
     message: str
     history: Optional[List[Dict[str, str]]] = []
@@ -34,6 +32,7 @@ class BookingRequest(BaseModel):
     email: str
     start_time: str
     end_time: str
+    title: Optional[str] = "Interview"
 
 @app.post("/api/chat")
 async def api_chat(req: ChatRequest):
@@ -63,6 +62,14 @@ async def api_slots():
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
+@app.get("/api/config")
+async def api_config():
+    return JSONResponse({
+        "success": True,
+        "vapi_public_key": settings.VAPI_PUBLIC_KEY,
+        "vapi_assistant_id": settings.VAPI_ASSISTANT_ID
+    })
+
 @app.post("/api/book")
 async def api_book(req: BookingRequest):
     try:
@@ -70,14 +77,14 @@ async def api_book(req: BookingRequest):
             name=req.name,
             email=req.email,
             start_time=req.start_time,
-            end_time=req.end_time
+            end_time=req.end_time,
+            title=req.title
         )
         return JSONResponse({"success": True, "booking": res})
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
 
-# OpenAI-compatible /v1/chat/completions and /chat/completions endpoint for Vapi / Retell
 @app.post("/v1/chat/completions")
 @app.post("/chat/completions")
 async def openai_completions(request: Request):
@@ -92,7 +99,6 @@ async def openai_completions(request: Request):
         last_message = messages[-1]
         query = last_message.get("content", "")
         
-        # Translate history
         history = []
         for msg in messages[:-1]:
             role = msg.get("role")
@@ -102,14 +108,12 @@ async def openai_completions(request: Request):
                 
         print(f"OpenAI Gateway Query: {query}")
         
-        # Get AI representative response
         response_text = await llm_service.generate_response(query, history)
         
         created_time = int(time.time())
         completion_id = f"chatcmpl-{uuid.uuid4()}"
         
         if not stream:
-            # Return single non-streaming JSON response
             return {
                 "id": completion_id,
                 "object": "chat.completion",
@@ -130,16 +134,11 @@ async def openai_completions(request: Request):
                 }
             }
         else:
-            # Return OpenAI streaming response using Server-Sent Events (SSE)
             async def sse_generator():
-                # We yield the answer in small chunks to simulate streaming
                 chunk_size = 10
                 words = response_text.split(" ")
                 
-                # First chunk (role specification)
                 yield f"data: {json.dumps({'id': completion_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': body.get('model', 'gpt-4o-mini'), 'choices': [{'index': 0, 'delta': {'role': 'assistant'}, 'finish_reason': None}]})}\n\n"
-                
-                # Loop through words and yield
                 current_idx = 0
                 while current_idx < len(words):
                     chunk_words = words[current_idx:current_idx + chunk_size]
@@ -158,9 +157,7 @@ async def openai_completions(request: Request):
                     }
                     yield f"data: {json.dumps(chunk_data)}\n\n"
                     current_idx += chunk_size
-                    await asyncio.sleep(0.05) # Tiny pause for realistic streaming feel
-                
-                # Final chunk
+                    await asyncio.sleep(0.05)
                 yield f"data: {json.dumps({'id': completion_id, 'object': 'chat.completion.chunk', 'created': created_time, 'model': body.get('model', 'gpt-4o-mini'), 'choices': [{'index': 0, 'delta': {}, 'finish_reason': 'stop'}]})}\n\n"
                 yield "data: [DONE]\n\n"
                 
@@ -171,15 +168,11 @@ async def openai_completions(request: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
-# Serve Frontend Web App
-# Create static directory if it does not exist
 if not os.path.exists("static"):
     os.makedirs("static")
 
-# Mount static directory for JS and CSS files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Serve index.html at root url
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     index_path = "static/index.html"

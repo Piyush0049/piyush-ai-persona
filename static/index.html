@@ -8,7 +8,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -18,22 +18,21 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     
-    <!-- Vapi Browser SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web@latest/dist/vapi-sdk.js"></script>
+    <!-- Vapi Browser SDK (loaded dynamically in initializeVapi) -->
 
     <style>
         :root {
-            --bg-primary: #0b0c10;
-            --bg-secondary: #12141c;
-            --bg-glass: rgba(18, 20, 28, 0.7);
-            --border-glass: rgba(255, 255, 255, 0.08);
-            --accent: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.4);
-            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --font-title: 'Outfit', sans-serif;
-            --font-body: 'Plus Jakarta Sans', sans-serif;
+            --bg-primary: #131415;
+            --bg-secondary: #191a1c;
+            --bg-glass: #191a1c;
+            --border-glass: #242628;
+            --accent: #19a186;
+            --accent-glow: rgba(25, 161, 134, 0.15);
+            --accent-gradient: linear-gradient(135deg, #19a186 0%, #117864 100%);
+            --text-main: #e8eaed;
+            --text-muted: #9aa0a6;
+            --font-title: 'Inter', sans-serif;
+            --font-body: 'Inter', sans-serif;
         }
 
         * {
@@ -41,7 +40,7 @@
             margin: 0;
             padding: 0;
             scrollbar-width: thin;
-            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+            scrollbar-color: #2c2e30 transparent;
         }
 
         body {
@@ -51,6 +50,8 @@
             height: 100vh;
             display: flex;
             overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         /* App Container */
@@ -61,52 +62,17 @@
             position: relative;
         }
 
-        /* Animated Grid Background */
-        .bg-grid {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
-            background-size: 40px 40px;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        .bg-gradient-blur {
-            position: absolute;
-            top: -10%;
-            right: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 70%);
-            z-index: 0;
-            filter: blur(80px);
-            pointer-events: none;
-        }
-
-        .bg-gradient-blur-2 {
-            position: absolute;
-            bottom: -10%;
-            left: -10%;
-            width: 50vw;
-            height: 50vw;
-            background: radial-gradient(circle, rgba(99, 102, 241, 0.08) 0%, transparent 70%);
-            z-index: 0;
-            filter: blur(80px);
-            pointer-events: none;
+        /* Hide background interactive elements for a simpler design */
+        .bg-grid, .bg-gradient-blur, .bg-gradient-blur-2 {
+            display: none !important;
         }
 
         /* Sidebar styling */
         aside.sidebar {
-            width: 320px;
-            background: var(--bg-glass);
+            width: 280px;
+            background: var(--bg-secondary);
             border-right: 1px solid var(--border-glass);
-            backdrop-filter: blur(16px);
-            padding: 24px;
+            padding: 24px 20px;
             display: flex;
             flex-direction: column;
             z-index: 10;
@@ -115,81 +81,78 @@
         .logo-section {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 32px;
+            gap: 10px;
+            margin-bottom: 24px;
         }
 
         .logo-icon {
-            width: 32px;
-            height: 32px;
-            background: var(--accent-gradient);
-            border-radius: 8px;
+            width: 28px;
+            height: 28px;
+            background: var(--accent);
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px var(--accent-glow);
+            color: #fff;
         }
 
         .logo-text {
             font-family: var(--font-title);
-            font-weight: 700;
-            font-size: 20px;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-weight: 600;
+            font-size: 18px;
+            color: var(--text-main);
         }
 
         .new-thread-btn {
-            background: var(--accent-gradient);
-            color: #fff;
-            border: none;
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-glass);
             border-radius: 8px;
-            padding: 12px 16px;
+            padding: 10px 16px;
             font-family: var(--font-body);
-            font-weight: 600;
-            font-size: 14px;
+            font-weight: 500;
+            font-size: 13px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 12px var(--accent-glow);
+            transition: all 0.2s ease;
             margin-bottom: 24px;
         }
 
         .new-thread-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px var(--accent-glow);
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.15);
         }
 
         .voice-call-card {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.015);
             border: 1px solid var(--border-glass);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 8px;
+            padding: 14px;
             margin-bottom: 24px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
         }
 
         .voice-call-title {
-            font-size: 13px;
-            font-weight: 700;
+            font-size: 11px;
+            font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
         .voice-btn {
-            background: #10b981;
+            background: var(--accent);
             color: white;
             border: none;
-            border-radius: 8px;
-            padding: 10px;
+            border-radius: 6px;
+            padding: 9px;
             font-family: var(--font-body);
-            font-weight: 700;
+            font-weight: 600;
             font-size: 13px;
             cursor: pointer;
             display: flex;
@@ -200,8 +163,7 @@
         }
 
         .voice-btn:hover {
-            background: #059669;
-            transform: translateY(-1px);
+            background: #158b73;
         }
 
         .voice-btn.active {
@@ -218,49 +180,55 @@
         .sidebar-nav {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             flex-grow: 1;
         }
 
         .nav-link {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            border-radius: 8px;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
             color: var(--text-muted);
             text-decoration: none;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
             cursor: pointer;
         }
 
         .nav-link:hover, .nav-link.active {
-            color: #fff;
+            color: var(--text-main);
             background: rgba(255, 255, 255, 0.04);
+        }
+
+        .nav-link.active {
+            color: var(--accent);
+            background: rgba(25, 161, 134, 0.06);
+            font-weight: 600;
         }
 
         .profile-area {
             margin-top: auto;
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding-top: 16px;
+            gap: 10px;
+            padding-top: 14px;
             border-top: 1px solid var(--border-glass);
         }
 
         .profile-avatar {
-            width: 40px;
-            height: 40px;
-            background: var(--accent-gradient);
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: var(--font-title);
-            font-weight: 700;
-            font-size: 14px;
+            font-weight: 600;
+            font-size: 12px;
             color: #fff;
         }
 
@@ -270,12 +238,12 @@
         }
 
         .profile-name {
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 13px;
+            font-weight: 500;
         }
 
         .profile-role {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-muted);
         }
 
@@ -303,13 +271,13 @@
             position: relative;
             z-index: 5;
             height: 100%;
+            background-color: var(--bg-primary);
         }
 
         .chat-header {
-            height: 64px;
+            height: 56px;
             border-bottom: 1px solid var(--border-glass);
-            background: rgba(11, 12, 16, 0.5);
-            backdrop-filter: blur(12px);
+            background: var(--bg-primary);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -319,45 +287,45 @@
         .status-pill {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            background: rgba(16, 185, 129, 0.1);
-            color: #10b981;
-            padding: 6px 12px;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            background: rgba(25, 161, 134, 0.08);
+            color: var(--accent);
+            padding: 4px 10px;
             border-radius: 50px;
-            border: 1px solid rgba(10, 185, 129, 0.2);
+            border: 1px solid rgba(25, 161, 134, 0.15);
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #10b981;
+            width: 6px;
+            height: 6px;
+            background-color: var(--accent);
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(25, 161, 134, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(25, 161, 134, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(25, 161, 134, 0); }
         }
 
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
         .header-btn {
             background: transparent;
             border: 1px solid var(--border-glass);
             color: var(--text-muted);
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 13px;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
             font-family: var(--font-body);
-            font-weight: 600;
+            font-weight: 500;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -366,45 +334,42 @@
         }
 
         .header-btn:hover {
-            color: #fff;
-            border-color: rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-main);
+            border-color: rgba(255, 255, 255, 0.15);
         }
 
         /* Messages Viewport */
         .messages-viewport {
             flex-grow: 1;
             overflow-y: auto;
-            padding: 40px 10%;
+            padding: 40px 15%;
             display: flex;
             flex-direction: column;
-            gap: 32px;
+            gap: 36px;
         }
 
         .welcome-view {
             text-align: center;
-            margin-top: 8vh;
-            max-width: 600px;
+            margin-top: 10vh;
+            max-width: 580px;
             align-self: center;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
         }
 
         .welcome-title {
             font-family: var(--font-title);
-            font-size: 42px;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            background: linear-gradient(to right, #ffffff, #a3a3a3);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 32px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--text-main);
         }
 
         .welcome-desc {
             color: var(--text-muted);
-            font-size: 16px;
+            font-size: 14px;
             margin-bottom: 24px;
             line-height: 1.5;
         }
@@ -417,38 +382,37 @@
         }
 
         .suggestion-card {
-            background: rgba(255, 255, 255, 0.02);
+            background: var(--bg-secondary);
             border: 1px solid var(--border-glass);
-            border-radius: 12px;
-            padding: 16px;
+            border-radius: 8px;
+            padding: 14px;
             text-align: left;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .suggestion-card:hover {
-            background: rgba(99, 102, 241, 0.05);
-            border-color: rgba(99, 102, 241, 0.3);
-            transform: translateY(-2px);
+            border-color: rgba(25, 161, 134, 0.3);
+            background: rgba(25, 161, 134, 0.02);
         }
 
         .suggestion-header {
-            font-size: 12px;
-            font-weight: 700;
+            font-size: 10px;
+            font-weight: 600;
             color: var(--accent);
             text-transform: uppercase;
         }
 
         .suggestion-text {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             color: var(--text-main);
         }
 
-        /* Message Bubble */
+        /* Message Bubble - Simplified flat layout like Perplexity */
         .message-row {
             display: flex;
             flex-direction: column;
@@ -456,17 +420,9 @@
             width: 100%;
         }
 
-        .message-row.user {
-            align-items: flex-end;
-        }
-
-        .message-row.bot {
-            align-items: flex-start;
-        }
-
         .msg-sender {
-            font-size: 12px;
-            font-weight: 700;
+            font-size: 10px;
+            font-weight: 600;
             color: var(--text-muted);
             display: flex;
             align-items: center;
@@ -479,26 +435,40 @@
         }
 
         .message-bubble {
-            max-width: 80%;
-            border-radius: 16px;
-            padding: 16px 20px;
+            width: 100%;
             line-height: 1.6;
-            font-size: 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            font-size: 14px;
+        }
+
+        .message-row.user {
+            align-items: flex-start;
         }
 
         .message-row.user .message-bubble {
-            background: rgba(99, 102, 241, 0.1);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            color: var(--text-main);
-            border-bottom-right-radius: 4px;
-        }
-
-        .message-row.bot .message-bubble {
             background: var(--bg-secondary);
             border: 1px solid var(--border-glass);
             color: var(--text-main);
-            border-bottom-left-radius: 4px;
+            border-radius: 8px;
+            padding: 12px 16px;
+            max-width: 100%;
+        }
+
+        .message-row.bot {
+            align-items: flex-start;
+            border-bottom: 1px solid var(--border-glass);
+            padding-bottom: 24px;
+        }
+
+        .message-row.bot:last-of-type {
+            border-bottom: none;
+        }
+
+        .message-row.bot .message-bubble {
+            background: transparent;
+            border: none;
+            padding: 0;
+            box-shadow: none;
+            color: var(--text-main);
         }
 
         /* Markdown Styles inside message bubbles */
@@ -521,17 +491,18 @@
 
         .message-bubble code {
             font-family: monospace;
-            background: rgba(255, 255, 255, 0.08);
-            padding: 2px 6px;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 2px 5px;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 12.5px;
         }
 
         .message-bubble pre {
             margin: 16px 0;
-            border-radius: 8px;
+            border-radius: 6px;
             overflow: hidden;
-            font-size: 13px;
+            font-size: 12.5px;
+            border: 1px solid var(--border-glass);
         }
 
         .message-bubble pre code {
@@ -542,7 +513,7 @@
         .message-bubble h1, .message-bubble h2, .message-bubble h3 {
             font-family: var(--font-title);
             margin: 18px 0 8px 0;
-            font-weight: 700;
+            font-weight: 600;
         }
 
         .message-bubble h1:first-child, .message-bubble h2:first-child, .message-bubble h3:first-child {
@@ -554,11 +525,10 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 12px 18px;
+            padding: 10px 14px;
             background: var(--bg-secondary);
             border: 1px solid var(--border-glass);
-            border-radius: 16px;
-            border-bottom-left-radius: 4px;
+            border-radius: 8px;
         }
 
         .dot-pulse {
@@ -567,8 +537,8 @@
         }
 
         .dot-pulse div {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             background: var(--text-muted);
             border-radius: 50%;
             animation: dot-pulse 1.4s infinite ease-in-out both;
@@ -586,18 +556,18 @@
         .calendar-widget {
             margin-top: 12px;
             border: 1px solid var(--border-glass);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            background: var(--bg-secondary);
             overflow: hidden;
-            max-width: 500px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 450px;
         }
 
         .cal-header {
-            background: rgba(255, 255, 255, 0.04);
-            padding: 12px 16px;
-            font-weight: 700;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 10px 14px;
+            font-weight: 600;
             font-family: var(--font-title);
+            font-size: 13px;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -605,24 +575,24 @@
         }
 
         .slots-container {
-            padding: 16px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            max-height: 250px;
+            gap: 6px;
+            max-height: 220px;
             overflow-y: auto;
         }
 
         .slot-btn {
-            background: rgba(99, 102, 241, 0.08);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 8px;
-            padding: 10px 14px;
+            background: rgba(25, 161, 134, 0.05);
+            border: 1px solid rgba(25, 161, 134, 0.15);
+            border-radius: 6px;
+            padding: 8px 12px;
             text-align: left;
             color: var(--text-main);
             font-family: var(--font-body);
             font-weight: 500;
-            font-size: 13px;
+            font-size: 12.5px;
             cursor: pointer;
             transition: all 0.2s;
             display: flex;
@@ -631,19 +601,18 @@
         }
 
         .slot-btn:hover {
-            background: var(--accent-gradient);
+            background: var(--accent);
             border-color: transparent;
-            transform: translateX(4px);
             color: #fff;
         }
 
         .booking-form {
-            padding: 16px;
+            padding: 14px;
             border-top: 1px solid var(--border-glass);
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            background: rgba(0,0,0,0.2);
+            gap: 10px;
+            background: rgba(0,0,0,0.1);
         }
 
         .form-group {
@@ -653,37 +622,37 @@
         }
 
         .form-group label {
-            font-size: 11px;
-            font-weight: 700;
+            font-size: 10px;
+            font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
         }
 
         .form-input {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--border-glass);
-            border-radius: 6px;
-            padding: 8px 12px;
+            border-radius: 4px;
+            padding: 6px 10px;
             color: white;
             font-family: var(--font-body);
-            font-size: 13px;
+            font-size: 12.5px;
         }
 
         .form-input:focus {
             outline: none;
             border-color: var(--accent);
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .booking-submit-btn {
-            background: var(--accent-gradient);
+            background: var(--accent);
             color: white;
             border: none;
-            border-radius: 6px;
-            padding: 10px;
+            border-radius: 4px;
+            padding: 8px;
             font-family: var(--font-body);
-            font-weight: 700;
-            font-size: 13px;
+            font-weight: 600;
+            font-size: 12.5px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -695,37 +664,34 @@
             opacity: 0.9;
         }
 
-        /* Input Container */
+        /* Input Container - Simplified and styled like Perplexity */
         .chat-input-area {
-            padding: 24px 10% 32px 10%;
-            background: linear-gradient(180deg, transparent 0%, var(--bg-primary) 50%);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .input-wrapper {
-            background: var(--bg-glass);
-            border: 1px solid var(--border-glass);
-            border-radius: 16px;
-            padding: 12px 16px;
-            backdrop-filter: blur(16px);
+            padding: 16px 15% 24px 15%;
+            background: var(--bg-primary);
             display: flex;
             flex-direction: column;
             gap: 8px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-            transition: border-color 0.3s;
+        }
+
+        .input-wrapper {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-glass);
+            border-radius: 12px;
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: border-color 0.2s;
         }
 
         .input-wrapper:focus-within {
-            border-color: rgba(99, 102, 241, 0.5);
-            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.1);
+            border-color: var(--accent);
         }
 
         .input-row {
             display: flex;
             align-items: flex-start;
-            gap: 12px;
+            gap: 10px;
         }
 
         textarea.chat-input {
@@ -734,7 +700,7 @@
             border: none;
             color: white;
             font-family: var(--font-body);
-            font-size: 15px;
+            font-size: 14px;
             resize: none;
             height: 24px;
             max-height: 120px;
@@ -747,28 +713,26 @@
         }
 
         .send-btn {
-            background: var(--accent-gradient);
+            background: var(--accent);
             border: none;
             color: white;
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: transform 0.2s;
-            box-shadow: 0 4px 12px var(--accent-glow);
+            transition: opacity 0.2s;
         }
 
         .send-btn:hover {
-            transform: scale(1.05);
+            opacity: 0.9;
         }
 
         .send-btn:disabled {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.03);
             color: var(--text-muted);
-            box-shadow: none;
             cursor: not-allowed;
         }
 
@@ -776,22 +740,22 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding-top: 8px;
-            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            padding-top: 6px;
+            border-top: 1px solid rgba(255, 255, 255, 0.03);
         }
 
         .tool-chips {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
 
         .tool-chip {
-            background: rgba(255,255,255,0.04);
+            background: rgba(255,255,255,0.02);
             border: 1px solid var(--border-glass);
             border-radius: 50px;
-            padding: 4px 10px;
-            font-size: 11px;
-            font-weight: 600;
+            padding: 3px 8px;
+            font-size: 10px;
+            font-weight: 500;
             color: var(--text-muted);
             display: flex;
             align-items: center;
@@ -802,12 +766,12 @@
 
         .tool-chip:hover {
             color: white;
-            background: rgba(255,255,255,0.08);
-            border-color: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.05);
+            border-color: rgba(255,255,255,0.1);
         }
 
         .disclaimer-text {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--text-muted);
             text-align: center;
         }
@@ -819,8 +783,8 @@
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(8px);
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
             z-index: 100;
             display: none;
             align-items: center;
@@ -830,13 +794,12 @@
         .modal-card {
             background: var(--bg-secondary);
             border: 1px solid var(--border-glass);
-            border-radius: 16px;
-            padding: 24px;
-            width: 450px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            padding: 20px;
+            width: 400px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 14px;
         }
 
         .modal-header {
@@ -847,8 +810,8 @@
 
         .modal-title {
             font-family: var(--font-title);
-            font-weight: 700;
-            font-size: 18px;
+            font-weight: 600;
+            font-size: 16px;
         }
 
         .modal-close {
@@ -871,9 +834,6 @@
             }
             .chat-input-area {
                 padding: 16px;
-            }
-            .message-bubble {
-                max-width: 95%;
             }
         }
     </style>
@@ -898,7 +858,7 @@
             <div class="voice-call-card">
                 <span class="voice-call-title">Voice Representative</span>
                 <p style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
-                    Call and book interview in real-time. Direct phone: <b>+1 850 888 8888</b> or start a voice session below.
+                    Call and book interview in real-time. Direct phone: <b>+1 (321) 785 8851</b> or start a voice session below.
                 </p>
                 <button id="voice-call-btn" class="voice-btn">
                     <i data-lucide="phone-call" style="width: 14px; height: 14px;"></i>
@@ -1113,10 +1073,30 @@
         });
 
         // Initialize Vapi Browser call SDK
-        function initializeVapi() {
+        let vapiReady = false;
+        async function initializeVapi() {
+            try {
+                // Fetch server-defined Vapi configuration first
+                const configResp = await fetch('/api/config');
+                const configData = await configResp.json();
+                if (configData.success) {
+                    if (configData.vapi_public_key && configData.vapi_public_key.trim() !== "") {
+                        vapiPublicKey = configData.vapi_public_key.trim();
+                    }
+                    if (configData.vapi_assistant_id && configData.vapi_assistant_id.trim() !== "") {
+                        vapiAgentId = configData.vapi_assistant_id.trim();
+                    }
+                }
+            } catch (err) {
+                console.warn("Could not load backend Vapi configuration, falling back to local/demo credentials.", err);
+            }
+
             if (vapiPublicKey && vapiAgentId) {
                 try {
-                    vapi = new Vapi(vapiPublicKey);
+                    // Dynamically import the Vapi Web SDK
+                    const VapiModule = await import('https://esm.sh/@vapi-ai/web@latest');
+                    const VapiClass = VapiModule.default;
+                    vapi = new VapiClass(vapiPublicKey);
                     
                     vapi.on('call-start', () => {
                         isVoiceCallActive = true;
@@ -1139,6 +1119,9 @@
                         voiceBtnText.innerText = "Call Representative";
                         lucide.createIcons();
                     });
+
+                    vapiReady = true;
+                    console.log('Vapi SDK initialized successfully.');
                 } catch (e) {
                     console.error("Failed to initialize Vapi:", e);
                 }
@@ -1147,10 +1130,20 @@
 
         initializeVapi();
 
-        voiceCallBtn.addEventListener('click', () => {
-            if (!vapi) {
-                alert("Please click 'Settings' and enter your Vapi credentials first!");
-                return;
+        voiceCallBtn.addEventListener('click', async () => {
+            // If Vapi hasn't loaded yet, wait briefly for it
+            if (!vapi && !vapiReady) {
+                voiceBtnText.innerText = "Loading SDK...";
+                // Give it up to 5 seconds to finish initializing
+                for (let i = 0; i < 10; i++) {
+                    await new Promise(r => setTimeout(r, 500));
+                    if (vapi) break;
+                }
+                if (!vapi) {
+                    voiceBtnText.innerText = "Call Representative";
+                    alert("Voice SDK could not load. Please check your internet connection and refresh the page.");
+                    return;
+                }
             }
             if (isVoiceCallActive) {
                 vapi.stop();
@@ -1334,6 +1327,10 @@
                         <div class="booking-form" id="booking-form-box" style="display: none;">
                             <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Selected slot: <span id="selected-slot-text" style="color: var(--accent);"></span></h4>
                             <div class="form-group">
+                                <label>Interview Title</label>
+                                <input type="text" id="booking-title" class="form-input" placeholder="e.g. Technical Interview" value="Interview with Piyush Joshi" required>
+                            </div>
+                            <div class="form-group">
                                 <label>Your Full Name</label>
                                 <input type="text" id="booking-name" class="form-input" placeholder="e.g. John Doe" required>
                             </div>
@@ -1382,6 +1379,7 @@
         async function submitBooking(formBox) {
             const name = document.getElementById('booking-name').value.trim();
             const email = document.getElementById('booking-email').value.trim();
+            const title = document.getElementById('booking-title').value.trim();
 
             if (!name || !email) {
                 alert("Please fill in your Name and Email address.");
@@ -1402,7 +1400,8 @@
                         name: name,
                         email: email,
                         start_time: selectedStart,
-                        end_time: selectedEnd
+                        end_time: selectedEnd,
+                        title: title || 'Interview with Piyush Joshi'
                     })
                 });
                 

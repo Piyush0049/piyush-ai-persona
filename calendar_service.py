@@ -45,38 +45,34 @@ class CalendarService:
         - 02:00 PM - 02:30 PM
         - 04:00 PM - 04:30 PM
         """
-        # If Cal.com API key is provided, we can fetch Cal.com availability
         if settings.CAL_API_KEY and settings.CAL_EVENT_TYPE_ID:
             try:
-                # Cal.com API availability check
-                # For demo purposes, we fetch from cal.com, fallback to mock if API fails
                 url = f"https://api.cal.com/v1/slots?apiKey={settings.CAL_API_KEY}&eventTypeId={settings.CAL_EVENT_TYPE_ID}"
-                # Get next 3 days
                 start_date = datetime.date.today().isoformat()
                 end_date = (datetime.date.today() + datetime.timedelta(days=4)).isoformat()
                 response = httpx.get(f"{url}&startTime={start_date}T00:00:00Z&endTime={end_date}T23:59:59Z", timeout=5.0)
                 if response.status_code == 200:
                     slots_data = response.json().get("slots", {})
-                    # Process slots_data
                     slots = []
+                    kolkata_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
                     for date, day_slots in slots_data.items():
-                        for slot in day_slots[:3]: # Propose top 3 slots per day
+                        for slot in day_slots[:3]:
+                            dt_utc = datetime.datetime.fromisoformat(slot["time"].replace("Z", "+00:00"))
+                            dt_kolkata = dt_utc.astimezone(kolkata_tz)
                             slots.append({
-                                "start": slot["time"],
-                                "end": (datetime.datetime.fromisoformat(slot["time"].replace("Z", "+00:00")) + datetime.timedelta(minutes=30)).isoformat(),
-                                "formatted": datetime.datetime.fromisoformat(slot["time"].replace("Z", "+00:00")).strftime("%A, %b %d at %I:%M %p")
+                                "start": dt_kolkata.isoformat(),
+                                "end": (dt_kolkata + datetime.timedelta(minutes=30)).isoformat(),
+                                "formatted": dt_kolkata.strftime("%A, %b %d at %I:%M %p")
                             })
                     if slots:
                         return slots
             except Exception as e:
                 print(f"Cal.com fetch failed, using fallback: {e}")
 
-        # Fallback / Mock Availability
         booked = self.get_booked_slots()
         booked_starts = {b["start"] for b in booked}
 
         base_date = datetime.date.today()
-        # If a specific date is requested, parse it
         if date_str:
             try:
                 base_date = datetime.date.fromisoformat(date_str)
@@ -86,27 +82,25 @@ class CalendarService:
         slots = []
         days_to_check = 1 if date_str else 3
         current_day = base_date
-        max_days_scanned = 0  # Safety guard to prevent infinite loop
+        max_days_scanned = 0
 
         while len(slots) < 6 and len(slots) < (days_to_check * 3) and max_days_scanned < 30:
             max_days_scanned += 1
-            # Skip weekends (Saturday=5, Sunday=6)
             if current_day.weekday() in (5, 6):
                 current_day += datetime.timedelta(days=1)
                 continue
                 
-            # Propose three times for each day
             times = ["10:00", "14:00", "16:00"]
             for t in times:
                 hr, mn = map(int, t.split(":"))
                 start_dt = datetime.datetime.combine(current_day, datetime.time(hr, mn))
+                kolkata_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+                start_dt = start_dt.replace(tzinfo=kolkata_tz)
                 end_dt = start_dt + datetime.timedelta(minutes=30)
                 
-                # Format ISO
                 start_iso = start_dt.isoformat()
                 end_iso = end_dt.isoformat()
                 
-                # Check if already booked
                 if start_iso not in booked_starts:
                     formatted_time = start_dt.strftime("%A, %b %d at %I:%M %p")
                     slots.append({
@@ -118,12 +112,11 @@ class CalendarService:
 
         return slots
 
-    async def book_meeting(self, name: str, email: str, start_time: str, end_time: str) -> Dict[str, Any]:
+    async def book_meeting(self, name: str, email: str, start_time: str, end_time: str, title: str = None) -> Dict[str, Any]:
         """
         Books a meeting. If Cal.com or Google Calendar is configured, updates them.
         Always saves locally in calendar_db.json.
         """
-        # Parse times
         try:
             start_dt = datetime.datetime.fromisoformat(start_time.replace("Z", "+00:00"))
             end_dt = datetime.datetime.fromisoformat(end_time.replace("Z", "+00:00"))
@@ -138,16 +131,16 @@ class CalendarService:
             "booking_id": booking_id,
             "name": name,
             "email": email,
+            "title": title or "Interview",
             "start": start_time,
             "end": end_time,
             "formatted_time": start_dt.strftime("%A, %b %d at %I:%M %p"),
             "provider": "mock"
         }
 
-        # 1. Cal.com booking
+        booked_via_cal = False
         if settings.CAL_API_KEY and settings.CAL_EVENT_TYPE_ID:
             try:
-                # Call Cal.com API to book
                 async with httpx.AsyncClient() as client:
                     payload = {
                         "eventTypeId": int(settings.CAL_EVENT_TYPE_ID),
@@ -171,11 +164,11 @@ class CalendarService:
                         booking_result["provider"] = "cal.com"
                         booking_result["booking_id"] = cal_data.get("id", booking_id)
                         booking_result["web_link"] = cal_data.get("receiptUrl")
+                        booked_via_cal = True
             except Exception as e:
                 print(f"Cal.com booking request failed: {e}")
 
-        # 2. Google Calendar booking
-        elif settings.GOOGLE_CALENDAR_ID and os.path.exists("google_credentials.json"):
+        if not booked_via_cal and settings.GOOGLE_CALENDAR_ID and os.path.exists("google_credentials.json"):
             try:
                 from google.oauth2 import service_account
                 from googleapiclient.discovery import build
@@ -187,7 +180,7 @@ class CalendarService:
                 service = build('calendar', 'v3', credentials=creds)
                 
                 event = {
-                    'summary': f'Interview with {name} (Piyush Joshi AI Rep)',
+                    'summary': title or f'Interview with {name} (Piyush Joshi AI Rep)',
                     'description': f'Automatically booked interview for {name} ({email}). Generated by AI representative.',
                     'start': {
                         'dateTime': start_time,
@@ -197,10 +190,6 @@ class CalendarService:
                         'dateTime': end_time,
                         'timeZone': 'Asia/Kolkata',
                     },
-                    'attendees': [
-                        {'email': email},
-                        {'email': 'piyushjoshi81204@gmail.com'}
-                    ],
                 }
                 
                 created_event = service.events().insert(
@@ -213,9 +202,7 @@ class CalendarService:
             except Exception as e:
                 print(f"Google Calendar booking failed: {e}")
 
-        # Always save locally
         self.save_booking_local(booking_result)
         return booking_result
 
-# Global calendar service
 calendar_service = CalendarService()
