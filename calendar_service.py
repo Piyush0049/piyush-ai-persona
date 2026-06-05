@@ -40,7 +40,22 @@ class CalendarService:
         """
         Propose slots for the given date. If no date is given, proposes slots for
         the next 14 workdays (full 2 weeks).
+        Always filters out slots in the past and slots that overlap with existing bookings.
         """
+        kolkata_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        now_kolkata = datetime.datetime.now(kolkata_tz)
+
+        # Parse booked intervals in Kolkata timezone for overlap checks
+        booked = self.get_booked_slots()
+        booked_intervals = []
+        for b in booked:
+            try:
+                b_start = datetime.datetime.fromisoformat(b["start"].replace("Z", "+00:00")).astimezone(kolkata_tz)
+                b_end = datetime.datetime.fromisoformat(b["end"].replace("Z", "+00:00")).astimezone(kolkata_tz)
+                booked_intervals.append((b_start, b_end))
+            except Exception:
+                continue
+
         if settings.CAL_API_KEY and settings.CAL_EVENT_TYPE_ID:
             try:
                 url = f"https://api.cal.com/v1/slots?apiKey={settings.CAL_API_KEY}&eventTypeId={settings.CAL_EVENT_TYPE_ID}"
@@ -50,23 +65,33 @@ class CalendarService:
                 if response.status_code == 200:
                     slots_data = response.json().get("slots", {})
                     slots = []
-                    kolkata_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
                     for date, day_slots in slots_data.items():
                         for slot in day_slots:
                             dt_utc = datetime.datetime.fromisoformat(slot["time"].replace("Z", "+00:00"))
                             dt_kolkata = dt_utc.astimezone(kolkata_tz)
-                            slots.append({
-                                "start": dt_kolkata.isoformat(),
-                                "end": (dt_kolkata + datetime.timedelta(minutes=30)).isoformat(),
-                                "formatted": dt_kolkata.strftime("%A, %b %d at %I:%M %p")
-                            })
+                            
+                            # Filter out past slots
+                            if dt_kolkata <= now_kolkata:
+                                continue
+                                
+                            # Filter out occupied slots
+                            end_kolkata = dt_kolkata + datetime.timedelta(minutes=30)
+                            is_occupied = False
+                            for b_start, b_end in booked_intervals:
+                                if dt_kolkata < b_end and end_kolkata > b_start:
+                                    is_occupied = True
+                                    break
+                            
+                            if not is_occupied:
+                                slots.append({
+                                    "start": dt_kolkata.isoformat(),
+                                    "end": end_kolkata.isoformat(),
+                                    "formatted": dt_kolkata.strftime("%A, %b %d at %I:%M %p (IST)")
+                                })
                     if slots:
                         return slots
             except Exception as e:
                 print(f"Cal.com fetch failed, using fallback: {e}")
-
-        booked = self.get_booked_slots()
-        booked_starts = {b["start"] for b in booked}
 
         base_date = datetime.date.today()
         if date_str:
@@ -93,19 +118,26 @@ class CalendarService:
             for t in times:
                 hr, mn = map(int, t.split(":"))
                 start_dt = datetime.datetime.combine(current_day, datetime.time(hr, mn))
-                kolkata_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
                 start_dt = start_dt.replace(tzinfo=kolkata_tz)
+                
+                # Filter out past slots
+                if start_dt <= now_kolkata:
+                    continue
+                    
                 end_dt = start_dt + datetime.timedelta(minutes=30)
                 
-                start_iso = start_dt.isoformat()
-                end_iso = end_dt.isoformat()
+                # Filter out occupied slots
+                is_occupied = False
+                for b_start, b_end in booked_intervals:
+                    if start_dt < b_end and end_dt > b_start:
+                        is_occupied = True
+                        break
                 
-                if start_iso not in booked_starts:
-                    formatted_time = start_dt.strftime("%A, %b %d at %I:%M %p")
+                if not is_occupied:
                     slots.append({
-                        "start": start_iso,
-                        "end": end_iso,
-                        "formatted": formatted_time
+                        "start": start_dt.isoformat(),
+                        "end": end_dt.isoformat(),
+                        "formatted": start_dt.strftime("%A, %b %d at %I:%M %p (IST)")
                     })
             current_day += datetime.timedelta(days=1)
 
@@ -117,19 +149,20 @@ class CalendarService:
         Always saves locally in calendar_db.json.
         Prevents double bookings.
         """
+        kolkata_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
         try:
-            start_dt = datetime.datetime.fromisoformat(start_time.replace("Z", "+00:00"))
-            end_dt = datetime.datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+            start_dt = datetime.datetime.fromisoformat(start_time.replace("Z", "+00:00")).astimezone(kolkata_tz)
+            end_dt = datetime.datetime.fromisoformat(end_time.replace("Z", "+00:00")).astimezone(kolkata_tz)
         except Exception:
-            start_dt = datetime.datetime.fromisoformat(start_time)
-            end_dt = datetime.datetime.fromisoformat(end_time)
+            start_dt = datetime.datetime.fromisoformat(start_time).replace(tzinfo=kolkata_tz)
+            end_dt = datetime.datetime.fromisoformat(end_time).replace(tzinfo=kolkata_tz)
 
         # Check for conflicts with existing bookings
         existing_bookings = self.get_booked_slots()
         for booking in existing_bookings:
             try:
-                existing_start = datetime.datetime.fromisoformat(booking["start"].replace("Z", "+00:00"))
-                existing_end = datetime.datetime.fromisoformat(booking["end"].replace("Z", "+00:00"))
+                existing_start = datetime.datetime.fromisoformat(booking["start"].replace("Z", "+00:00")).astimezone(kolkata_tz)
+                existing_end = datetime.datetime.fromisoformat(booking["end"].replace("Z", "+00:00")).astimezone(kolkata_tz)
 
                 # Check if time slots overlap
                 if (start_dt < existing_end and end_dt > existing_start):
@@ -147,7 +180,7 @@ class CalendarService:
             "title": title or "Interview",
             "start": start_time,
             "end": end_time,
-            "formatted_time": start_dt.strftime("%A, %b %d at %I:%M %p"),
+            "formatted_time": start_dt.strftime("%A, %b %d at %I:%M %p (IST)"),
             "provider": "mock"
         }
 

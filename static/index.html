@@ -1715,12 +1715,8 @@
 
                         slots.forEach(slot => {
                             const d = new Date(slot.start);
-                            let hours = d.getHours();
-                            const minutes = String(d.getMinutes()).padStart(2, '0');
-                            const ampm = hours >= 12 ? 'PM' : 'AM';
-                            hours = hours % 12;
-                            hours = hours ? hours : 12;
-                            const timeLabel = `${hours}:${minutes} ${ampm}`;
+                            const options = { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true };
+                            const timeLabel = d.toLocaleTimeString('en-US', options);
 
                             const btn = document.createElement('button');
                             btn.className = 'time-slot-btn';
