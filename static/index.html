@@ -519,6 +519,71 @@
             border: 1px solid var(--border-glass);
         }
 
+        /* Collapsible thinking process styles (Perplexity style) */
+        .thinking-details {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-glass);
+            border-radius: 8px;
+            margin-bottom: 14px;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .thinking-summary {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 500;
+            color: var(--text-muted);
+            list-style: none; /* Hide default chrome details arrow */
+            transition: background 0.2s;
+        }
+
+        .thinking-summary::-webkit-details-marker {
+            display: none; /* Hide Safari details arrow */
+        }
+
+        .thinking-summary span {
+            font-size: 12px;
+            letter-spacing: 0.02em;
+        }
+
+        .thinking-summary:hover {
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text-main);
+        }
+
+        .thinking-content {
+            padding: 12px 14px;
+            border-top: 1px solid var(--border-glass);
+            color: var(--text-muted);
+            line-height: 1.6;
+            font-size: 13px;
+        }
+
+        .thinking-content p {
+            margin-bottom: 8px;
+        }
+
+        .thinking-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .thinking-details[open] .thinking-summary {
+            border-bottom: none;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        
+        .thinking-details[open] .thinking-summary .chevron-icon {
+            transform: rotate(180deg);
+        }
+        
+        .thinking-summary .chevron-icon {
+            transition: transform 0.2s ease;
+        }
+
         .message-bubble pre code {
             background: none;
             padding: 0;
@@ -1241,6 +1306,38 @@
             }
         });
 
+        // Parse response to separate Thinking Process and Verified Answer
+        function parseResponseContent(reply) {
+            const thinkingRegex = /(?:##\s*)?\[?THINKING PROCESS\]?/i;
+            const answerRegex = /(?:##\s*)?\[?VERIFIED ANSWER\]?/i;
+            
+            const thinkingMatch = reply.match(thinkingRegex);
+            const answerMatch = reply.match(answerRegex);
+            
+            if (thinkingMatch && answerMatch) {
+                const thinkingIndex = thinkingMatch.index;
+                const answerIndex = answerMatch.index;
+                
+                if (thinkingIndex < answerIndex) {
+                    const thinkingHeaderLength = thinkingMatch[0].length;
+                    const thinkingContent = reply.substring(thinkingIndex + thinkingHeaderLength, answerIndex).trim();
+                    
+                    const answerHeaderLength = answerMatch[0].length;
+                    const answerContent = reply.substring(answerIndex + answerHeaderLength).trim();
+                    
+                    return {
+                        thinking: thinkingContent,
+                        answer: answerContent
+                    };
+                }
+            }
+            
+            return {
+                thinking: null,
+                answer: reply
+            };
+        }
+
         // Send a suggestion
         function sendSuggestion(text) {
             chatTextarea.value = text;
@@ -1335,15 +1432,34 @@
                     const botRow = document.createElement('div');
                     botRow.className = 'message-row bot';
                     
-                    // Render Markdown
-                    const htmlContent = marked.parse(reply);
+                    // Parse response content into thinking and answer
+                    const parsed = parseResponseContent(reply);
+                    
+                    let bubbleHtml = '';
+                    if (parsed.thinking) {
+                        bubbleHtml += `
+                            <details class="thinking-details">
+                                <summary class="thinking-summary">
+                                    <i data-lucide="brain" style="width: 12px; height: 12px; margin-right: 6px; color: var(--text-muted);"></i>
+                                    <span>Thinking Process</span>
+                                    <i data-lucide="chevron-down" class="chevron-icon" style="width: 12px; height: 12px; margin-left: auto; color: var(--text-muted);"></i>
+                                </summary>
+                                <div class="thinking-content">
+                                    ${marked.parse(parsed.thinking)}
+                                </div>
+                            </details>
+                        `;
+                    }
+                    
+                    bubbleHtml += `<div class="message-bubble">${marked.parse(parsed.answer)}</div>`;
+                    
                     botRow.innerHTML = `
                         <div class="msg-sender">
                             <i data-lucide="sparkles" style="width: 10px; height: 10px; color: var(--accent);"></i>
                             <span>Assistant</span>
                         </div>
-                        <div class="message-bubble">
-                            ${htmlContent}
+                        <div style="width: 100%;">
+                            ${bubbleHtml}
                         </div>
                     `;
                     messagesContainer.appendChild(botRow);
