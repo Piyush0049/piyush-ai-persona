@@ -363,44 +363,57 @@ async def openai_completions(request: Request):
 
         print(f"OpenAI Gateway Query: {query}")
 
-        # Check if query requires function calling
+        # Check if query requires calendar operations
         query_lower = query.lower()
-        needs_calendar = any(word in query_lower for word in ["book", "schedule", "available", "slots", "calendar", "meeting", "interview", "availability"])
+        full_conversation = " ".join([h.get("content", "") for h in history]) + " " + query
 
-        # If tools are available and query needs calendar, return function call
-        if tools and needs_calendar:
-            # Check if asking for availability
-            if any(word in query_lower for word in ["available", "slots", "when", "calendar", "check"]):
-                created_time = int(time.time())
-                completion_id = f"chatcmpl-{uuid.uuid4()}"
-                return {
-                    "id": completion_id,
-                    "object": "chat.completion",
-                    "created": created_time,
-                    "model": body.get("model", "gpt-4o-mini"),
-                    "choices": [{
-                        "index": 0,
-                        "message": {
-                            "role": "assistant",
-                            "content": None,
-                            "tool_calls": [{
-                                "id": f"call_{uuid.uuid4().hex[:24]}",
-                                "type": "function",
-                                "function": {
-                                    "name": "get_available_slots",
-                                    "arguments": "{}"
-                                }
-                            }]
-                        },
-                        "finish_reason": "tool_calls"
-                    }],
-                    "usage": {
-                        "prompt_tokens": len(query) // 4,
-                        "completion_tokens": 20,
-                        "total_tokens": (len(query) // 4) + 20
-                    }
-                }
+        # Detect booking intent and handle with direct calendar integration
+        needs_slots = any(word in query_lower for word in ["available", "slots", "when", "date", "schedule", "book"])
+        has_name_email = "@" in full_conversation  # Has email mentioned
 
+        # If asking for slots or scheduling, inject actual calendar data into context
+        if needs_slots:
+            from datetime import datetime, timedelta
+            import re
+
+            # Try to extract date from query
+            today = datetime.now().date()
+            target_date = None
+
+            if "tomorrow" in query_lower:
+                target_date = today + timedelta(days=1)
+            elif "today" in query_lower:
+                target_date = today
+            elif re.search(r'monday|tuesday|wednesday|thursday|friday', query_lower):
+                # Parse day of week
+                days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+                for i, day in enumerate(days):
+                    if day in query_lower:
+                        days_ahead = i - today.weekday()
+                        if days_ahead <= 0:
+                            days_ahead += 7
+                        target_date = today + timedelta(days=days_ahead)
+                        break
+
+            # Get available slots
+            date_str = target_date.isoformat() if target_date else None
+            slots = calendar_service.get_available_slots(date_str)
+
+            # Limit to 5 slots and format briefly
+            slot_list = []
+            for slot in slots[:5]:
+                try:
+                    dt = datetime.fromisoformat(slot["start"].replace("Z", "+00:00"))
+                    slot_list.append(dt.strftime("%I:%M %p"))
+                except:
+                    pass
+
+            # Inject slot info into the query context for LLM
+            if slot_list:
+                slot_info = f"\n\n[SYSTEM: Available slots for {target_date or 'upcoming days'}: {', '.join(slot_list)}. Show these to user briefly.]"
+                query = query + slot_info
+
+        # Generate LLM response
         response_text = await llm_service.generate_response(query, history)
 
         # WORKAROUND: If response mentions booking confirmation but didn't actually book, extract details and book now
@@ -459,8 +472,19 @@ async def openai_completions(request: Request):
                         hour += 12
 
                     if hour:
-                        # Use tomorrow or specified date
-                        booking_date = datetime.now() + timedelta(days=2)  # Default to day after tomorrow
+                        # Extract date from conversation (look for "tomorrow", "Monday", "June 8", etc.)
+                        booking_date = None
+                        conv_lower = full_conversation.lower()
+
+                        if "tomorrow" in conv_lower:
+                            booking_date = datetime.now() + timedelta(days=1)
+                        elif "today" in conv_lower:
+                            booking_date = datetime.now()
+                        else:
+                            # Try to find "June 8", "8th", "eighth" etc.
+                            # Default to 2 days from now if not found
+                            booking_date = datetime.now() + timedelta(days=2)
+
                         start_time = booking_date.replace(hour=hour, minute=0, second=0, microsecond=0)
                         end_time = start_time + timedelta(hours=1)
 
