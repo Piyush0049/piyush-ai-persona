@@ -129,19 +129,113 @@ async def api_book(req: BookingRequest):
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
 # Function calling endpoints for Vapi
+class GetSlotsRequest(BaseModel):
+    date: Optional[str] = None  # Format: "YYYY-MM-DD" or natural like "tomorrow", "next monday"
+
 @app.get("/functions/get_available_slots")
+async def function_get_available_slots_get():
+    """GET endpoint that asks for date"""
+    from datetime import datetime, timedelta
+    today = datetime.now()
+    suggestions = []
+    for i in range(7):
+        day = today + timedelta(days=i)
+        if day.weekday() < 5:
+            day_name = "today" if i == 0 else ("tomorrow" if i == 1 else day.strftime("%A"))
+            suggestions.append(day_name)
+    suggestion_text = ", ".join(suggestions[:5])
+    return JSONResponse({
+        "result": f"Sure! Which day would you like to schedule the interview? I have availability on {suggestion_text}. Just tell me the day that works best for you."
+    })
+
 @app.post("/functions/get_available_slots")
-async def function_get_available_slots():
-    """Function for Vapi to get available calendar slots"""
+async def function_get_available_slots(req: GetSlotsRequest):
+    """Function for Vapi to get available calendar slots for a specific date"""
     try:
-        slots = calendar_service.get_available_slots()
+        from datetime import datetime, timedelta
+
+        # If no date provided, ask for it
+        if not req.date:
+            # Get next 7 days to suggest
+            today = datetime.now()
+            suggestions = []
+            for i in range(7):
+                day = today + timedelta(days=i)
+                if day.weekday() < 5:  # Only weekdays
+                    day_name = "today" if i == 0 else ("tomorrow" if i == 1 else day.strftime("%A"))
+                    suggestions.append(day_name)
+
+            suggestion_text = ", ".join(suggestions[:5])
+            return JSONResponse({
+                "result": f"Sure! Which day would you like to schedule the interview? I have availability on {suggestion_text}. Just tell me the day that works best for you."
+            })
+
+        # Parse the date request
+        target_date = None
+        req_date_lower = req.date.lower().strip()
+        today = datetime.now().date()
+
+        # Handle common date phrases
+        if req_date_lower in ["today"]:
+            target_date = today
+        elif req_date_lower in ["tomorrow"]:
+            target_date = today + timedelta(days=1)
+        elif "next" in req_date_lower:
+            # Try to parse "next monday", "next tuesday", etc.
+            days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+            for i, day in enumerate(days):
+                if day in req_date_lower:
+                    days_ahead = i - today.weekday()
+                    if days_ahead <= 0:
+                        days_ahead += 7
+                    target_date = today + timedelta(days=days_ahead)
+                    break
+        else:
+            # Try to parse as ISO date format
+            try:
+                target_date = datetime.strptime(req.date, "%Y-%m-%d").date()
+            except:
+                pass
+
+        if not target_date:
+            return JSONResponse({
+                "result": f"I didn't quite catch that date. Could you tell me which day you'd prefer? For example, you can say 'tomorrow', 'next Monday', or a specific date."
+            })
+
+        # Get slots for the specific date
+        date_str = target_date.isoformat()
+        slots = calendar_service.get_available_slots(date_str)
+
+        if not slots:
+            next_day = target_date + timedelta(days=1)
+            return JSONResponse({
+                "result": f"I'm sorry, there are no available time slots on {target_date.strftime('%A, %B %d')}. Would you like to try {next_day.strftime('%A, %B %d')} instead?"
+            })
+
+        # Format slots for speaking - only times, since date is known
+        slot_text = []
+        for i, slot in enumerate(slots, 1):
+            # Get just the time part
+            start_iso = slot.get("start", "")
+            try:
+                dt = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+                time_str = dt.strftime("%I:%M %p")
+                slot_text.append(f"Option {i}: {time_str}")
+            except:
+                formatted_time = slot.get("formatted", "")
+                slot_text.append(f"Option {i}: {formatted_time}")
+
+        speakable_slots = ". ".join(slot_text)
+        day_name = target_date.strftime("%A, %B %d")
+
         return JSONResponse({
-            "success": True,
-            "slots": slots[:5],  # Return first 5 slots
-            "message": f"Found {len(slots)} available slots"
+            "result": f"Great! On {day_name}, I have the following times available: {speakable_slots}. Which time works best for you?"
         })
     except Exception as e:
-        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+        print(f"Error fetching slots: {e}")
+        return JSONResponse({
+            "result": "I'm having trouble accessing the calendar right now. Please try again in a moment."
+        })
 
 class FunctionBookMeetingRequest(BaseModel):
     name: str
@@ -164,13 +258,11 @@ async def function_book_meeting(req: FunctionBookMeetingRequest):
 
         if requested_slot not in available_slots:
             return JSONResponse({
-                "success": False,
-                "error": "This time slot is no longer available. Please choose another slot.",
-                "message": "Slot unavailable"
-            }, status_code=409)
+                "result": "I'm sorry, but that time slot was just taken by someone else. Let me check the available times again for you."
+            })
 
         # Book the meeting (this will add it to the calendar)
-        res = await calendar_service.book_meeting(
+        await calendar_service.book_meeting(
             name=req.name,
             email=req.email,
             start_time=start_dt.strftime("%Y-%m-%d %H:%M"),
@@ -178,18 +270,17 @@ async def function_book_meeting(req: FunctionBookMeetingRequest):
             title="Interview with Piyush Joshi"
         )
 
+        # Format the time in a speakable way
+        formatted_time = start_dt.strftime("%A, %B %d at %I:%M %p")
+
         return JSONResponse({
-            "success": True,
-            "booking": res,
-            "message": f"Successfully booked meeting for {req.name} on {req.slot}"
+            "result": f"Perfect! I've successfully booked your interview with Piyush for {formatted_time} India Standard Time. You'll receive a confirmation email at {req.email} shortly. Is there anything else I can help you with?"
         })
     except Exception as e:
         print(f"Booking error: {e}")
         return JSONResponse({
-            "success": False,
-            "error": str(e),
-            "message": "Failed to book meeting"
-        }, status_code=500)
+            "result": "I encountered an issue while booking the meeting. Please try again or contact Piyush directly at his email."
+        })
 
 
 @app.post("/v1/chat/completions")
