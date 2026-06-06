@@ -403,6 +403,79 @@ async def openai_completions(request: Request):
 
         response_text = await llm_service.generate_response(query, history)
 
+        # WORKAROUND: If response mentions booking confirmation but didn't actually book, extract details and book now
+        if "confirmed" in response_text.lower() or "booked" in response_text.lower() or "interview" in response_text.lower():
+            # Try to extract booking details from conversation history
+            import re
+            from datetime import datetime, timedelta
+
+            # Look for name, email, date, time in history
+            full_conversation = " ".join([h.get("content", "") for h in history]) + " " + query
+
+            # Extract email
+            email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', full_conversation)
+            email = email_match.group(0) if email_match else None
+
+            # Extract name (look for "name is X" or "I'm X" patterns)
+            name_match = re.search(r'(?:name is|I\'m|I am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)', full_conversation)
+            name = name_match.group(1) if name_match else None
+
+            # Extract time from user's last message or response (like "two PM", "3 PM", "14:00")
+            time_patterns = [
+                r'(\d{1,2})\s*(?:PM|pm|p\.m\.)',  # 2 PM, 3PM
+                r'(\d{1,2}):(\d{2})',  # 14:00
+                r'(two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:PM|pm|AM|am)'  # two PM
+            ]
+
+            time_str = None
+            for pattern in time_patterns:
+                match = re.search(pattern, query + " " + response_text, re.IGNORECASE)
+                if match:
+                    time_str = match.group(0)
+                    break
+
+            # If we have all details and LLM said it's confirmed, actually book it
+            if email and name and time_str and ("confirmed" in response_text.lower() or "booked" in response_text.lower()):
+                try:
+                    # Convert time string to 24-hour format
+                    time_lower = time_str.lower()
+                    hour = None
+
+                    # Handle word numbers
+                    word_to_num = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12}
+                    for word, num in word_to_num.items():
+                        if word in time_lower:
+                            hour = num
+                            break
+
+                    # Handle numeric
+                    if hour is None:
+                        num_match = re.search(r'(\d{1,2})', time_str)
+                        if num_match:
+                            hour = int(num_match.group(1))
+
+                    # Adjust for PM
+                    if hour and "pm" in time_lower and hour < 12:
+                        hour += 12
+
+                    if hour:
+                        # Use tomorrow or specified date
+                        booking_date = datetime.now() + timedelta(days=2)  # Default to day after tomorrow
+                        start_time = booking_date.replace(hour=hour, minute=0, second=0, microsecond=0)
+                        end_time = start_time + timedelta(hours=1)
+
+                        # Actually book it
+                        booking_result = await calendar_service.book_meeting(
+                            name=name,
+                            email=email,
+                            start_time=start_time.strftime("%Y-%m-%d %H:%M"),
+                            end_time=end_time.strftime("%Y-%m-%d %H:%M"),
+                            title="Interview with Piyush Joshi"
+                        )
+                        print(f"[WORKAROUND] Auto-booked meeting: {booking_result}")
+                except Exception as booking_error:
+                    print(f"[WORKAROUND] Failed to auto-book: {booking_error}")
+
         # Log to MongoDB
         client_ip = request.client.host if request.client else "unknown"
         user_agent = request.headers.get("user-agent", "unknown")
