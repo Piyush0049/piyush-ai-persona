@@ -462,6 +462,9 @@ async def openai_completions(request: Request):
             print(f"[AUTO-BOOK] Extracted - Name: {name}, Email: {email}")
             print(f"[AUTO-BOOK] User messages only: {user_messages[:200]}")
 
+            # Debug: show what we're searching for time patterns
+            print(f"[AUTO-BOOK] Searching for time in: query='{query}' | AI response preview: '{response_text[:100]}'")
+
             # Extract time from user's last message or response (like "two PM", "3 PM", "14:00")
             time_patterns = [
                 r'(\d{1,2})\s*(?:PM|pm|p\.m\.)',  # 2 PM, 3PM
@@ -476,8 +479,11 @@ async def openai_completions(request: Request):
                     time_str = match.group(0)
                     break
 
+            print(f"[AUTO-BOOK] Time extracted: {time_str}")
+            print(f"[AUTO-BOOK] Trigger words check - confirmed: {'confirmed' in response_text.lower()}, booked: {'booked' in response_text.lower()}, scheduled: {'scheduled' in response_text.lower()}")
+
             # If we have all details and LLM said it's confirmed, actually book it
-            if email and name and time_str and ("confirmed" in response_text.lower() or "booked" in response_text.lower()):
+            if email and name and time_str and ("confirmed" in response_text.lower() or "booked" in response_text.lower() or "scheduled" in response_text.lower()):
                 try:
                     # Convert time string to 24-hour format
                     time_lower = time_str.lower()
