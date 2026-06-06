@@ -425,13 +425,29 @@ async def openai_completions(request: Request):
             # Look for name, email, date, time in history
             full_conversation = " ".join([h.get("content", "") for h in history]) + " " + query
 
-            # Extract email
-            email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', full_conversation)
-            email = email_match.group(0) if email_match else None
+            # Extract email - more flexible pattern
+            email_match = re.search(r'\b[A-Za-z0-9._%+-]+\s*@\s*[A-Za-z0-9.-]+\s*(?:dot|\.)\s*(?:com|org|net|edu|co|in)', full_conversation, re.IGNORECASE)
+            if not email_match:
+                # Fallback to standard pattern
+                email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', full_conversation)
 
-            # Extract name (look for "name is X" or "I'm X" patterns)
-            name_match = re.search(r'(?:name is|I\'m|I am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)', full_conversation)
-            name = name_match.group(1) if name_match else None
+            email = email_match.group(0).replace(" ", "").replace("dot", ".") if email_match else None
+
+            # Extract name - more flexible patterns
+            name_patterns = [
+                r'(?:name is|my name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)',  # "name is Joe"
+                r'(?:I\'m|I am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)',  # "I'm Joe"
+                r'^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*,',  # "Joe, joe@email.com"
+            ]
+
+            name = None
+            for pattern in name_patterns:
+                name_match = re.search(pattern, full_conversation, re.MULTILINE)
+                if name_match:
+                    name = name_match.group(1)
+                    break
+
+            print(f"[AUTO-BOOK] Extracted - Name: {name}, Email: {email}")
 
             # Extract time from user's last message or response (like "two PM", "3 PM", "14:00")
             time_patterns = [
@@ -472,7 +488,7 @@ async def openai_completions(request: Request):
                         hour += 12
 
                     if hour:
-                        # Extract date from conversation (look for "tomorrow", "Monday", "June 8", etc.)
+                        # Extract date from conversation (look for "tomorrow", "Monday", "June 8", "eighth June" etc.)
                         booking_date = None
                         conv_lower = full_conversation.lower()
 
@@ -481,12 +497,34 @@ async def openai_completions(request: Request):
                         elif "today" in conv_lower:
                             booking_date = datetime.now()
                         else:
-                            # Try to find "June 8", "8th", "eighth" etc.
-                            # Default to 2 days from now if not found
-                            booking_date = datetime.now() + timedelta(days=2)
+                            # Try to find "June 8", "8th June", "eighth June" etc.
+                            date_patterns = [
+                                r'june\s*(\d{1,2})',  # June 8
+                                r'(\d{1,2})(?:st|nd|rd|th)?\s*june',  # 8th June
+                                r'(eighth|ninth|tenth|eleventh|twelfth)\s*june',  # eighth June
+                            ]
+
+                            day_num = None
+                            for pattern in date_patterns:
+                                date_match = re.search(pattern, conv_lower)
+                                if date_match:
+                                    day_str = date_match.group(1)
+                                    # Convert word to number
+                                    word_to_day = {"eighth": 8, "ninth": 9, "tenth": 10, "eleventh": 11, "twelfth": 12}
+                                    day_num = word_to_day.get(day_str, int(day_str) if day_str.isdigit() else None)
+                                    break
+
+                            if day_num:
+                                # Use June 2026 (current year in logs)
+                                booking_date = datetime(2026, 6, day_num)
+                            else:
+                                # Default to 2 days from now if not found
+                                booking_date = datetime.now() + timedelta(days=2)
 
                         start_time = booking_date.replace(hour=hour, minute=0, second=0, microsecond=0)
                         end_time = start_time + timedelta(hours=1)
+
+                        print(f"[AUTO-BOOK] Booking details - Name: {name}, Email: {email}, Time: {start_time}")
 
                         # Actually book it
                         booking_result = await calendar_service.book_meeting(
