@@ -465,16 +465,17 @@ async def openai_completions(request: Request):
             # Debug: show what we're searching for time patterns
             print(f"[AUTO-BOOK] Searching for time in: query='{query}' | AI response preview: '{response_text[:100]}'")
 
-            # Extract time from user's last message or response (like "two PM", "3 PM", "14:00")
+            # Extract time from USER's query ONLY (not AI response to avoid wrong AM/PM)
             time_patterns = [
-                r'(\d{1,2})\s*(?:PM|pm|p\.m\.)',  # 2 PM, 3PM
-                r'(\d{1,2}):(\d{2})',  # 14:00
-                r'(two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:PM|pm|AM|am)'  # two PM
+                r'(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(?:PM|pm|AM|am)',  # "nine PM"
+                r'(\d{1,2})\s*(?:PM|pm|p\.m\.|AM|am|a\.m\.)',  # "9 PM", "9PM"
+                r'(\d{1,2}):(\d{2})',  # "21:00"
             ]
 
             time_str = None
             for pattern in time_patterns:
-                match = re.search(pattern, query + " " + response_text, re.IGNORECASE)
+                # Search ONLY in user's query + conversation history (NOT AI response)
+                match = re.search(pattern, user_messages, re.IGNORECASE)
                 if match:
                     time_str = match.group(0)
                     break
@@ -490,7 +491,7 @@ async def openai_completions(request: Request):
                     hour = None
 
                     # Handle word numbers
-                    word_to_num = {"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12}
+                    word_to_num = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12}
                     for word, num in word_to_num.items():
                         if word in time_lower:
                             hour = num
@@ -502,9 +503,12 @@ async def openai_completions(request: Request):
                         if num_match:
                             hour = int(num_match.group(1))
 
-                    # Adjust for PM
+                    # Adjust for PM (add 12 hours if PM and not noon)
                     if hour and "pm" in time_lower and hour < 12:
                         hour += 12
+                    # Handle AM explicitly (if user says 12 AM, convert to 0)
+                    elif hour and "am" in time_lower and hour == 12:
+                        hour = 0
 
                     if hour:
                         # Extract date from conversation (look for "tomorrow", "Monday", "June 8", "eighth June" etc.)
