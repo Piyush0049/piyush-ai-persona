@@ -18,7 +18,6 @@ A production-ready AI Representative of **Piyush Joshi** with voice calling, web
 
 - **Web Chat:** https://portfolio.piyushjoshi.space/
 - **Voice Call:** +1 (321) 785-8851
-- **Calendar Booking:** https://portfolio.piyushjoshi.space/calendar
 
 ## 🚀 Quick Start
 
@@ -49,12 +48,12 @@ Visit: **http://localhost:8000**
 - Analyzes requirements.txt for Python projects
 - No static JSON files - always fresh data
 
-### 2. Interactive Calendar Booking 📅
-- Visual calendar grid with date/time selection
+### 2. Autonomous Interview Booking 📅
+- Integrated directly in chat interface
 - Real-time slot availability checking
-- Google Calendar integration
+- Google Calendar integration with automatic event creation
 - Double-booking prevention
-- Mobile-responsive design
+- Works via chat and voice call
 
 ### 3. Chain of Thought Reasoning
 Every response shows transparent thinking process:
