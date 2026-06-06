@@ -327,7 +327,7 @@ class LLMService:
                     tool_result = "Here are the available slots:\n"
                     for idx, s in enumerate(slots):
                         tool_result += f"{idx + 1}. {s['formatted']} (Start: {s['start']}, End: {s['end']})\n"
-                    tool_result += "\nINSTRUCTION: Tell the user that the slots are loaded below in the interactive calendar widget. Do NOT list the individual slots in your text response."
+                    tool_result += "\nList these slots to the user naturally in your response."
                 else:
                     tool_result = "No slots are currently available on the calendar."
             

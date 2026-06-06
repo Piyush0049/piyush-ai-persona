@@ -154,6 +154,8 @@ async def function_get_available_slots(req: GetSlotsRequest):
     try:
         from datetime import datetime, timedelta
 
+        print(f"Get slots request: date={req.date}")
+
         # If no date provided, ask for it
         if not req.date:
             # Get next 7 days to suggest
@@ -228,11 +230,15 @@ async def function_get_available_slots(req: GetSlotsRequest):
         speakable_slots = ". ".join(slot_text)
         day_name = target_date.strftime("%A, %B %d")
 
+        print(f"Returning {len(slots)} slots for {day_name}")
+
         return JSONResponse({
             "result": f"Great! On {day_name}, I have the following times available: {speakable_slots}. Which time works best for you?"
         })
     except Exception as e:
         print(f"Error fetching slots: {e}")
+        import traceback
+        traceback.print_exc()
         return JSONResponse({
             "result": "I'm having trouble accessing the calendar right now. Please try again in a moment."
         })
@@ -248,27 +254,30 @@ async def function_book_meeting(req: FunctionBookMeetingRequest):
     try:
         from datetime import datetime, timedelta
 
-        # Parse the slot time
-        start_dt = datetime.strptime(req.slot, "%Y-%m-%d %H:%M")
+        print(f"Booking request: name={req.name}, email={req.email}, slot={req.slot}")
+
+        # Parse the slot time - handle both formats
+        try:
+            # Try parsing with timezone info first
+            start_dt = datetime.fromisoformat(req.slot.replace("Z", "+00:00"))
+            if start_dt.tzinfo:
+                start_dt = start_dt.replace(tzinfo=None)
+        except:
+            # Fallback to simple format
+            start_dt = datetime.strptime(req.slot, "%Y-%m-%d %H:%M")
+
         end_dt = start_dt + timedelta(hours=1)
 
-        # Check if slot is still available
-        available_slots = calendar_service.get_available_slots()
-        requested_slot = req.slot
-
-        if requested_slot not in available_slots:
-            return JSONResponse({
-                "result": "I'm sorry, but that time slot was just taken by someone else. Let me check the available times again for you."
-            })
-
-        # Book the meeting (this will add it to the calendar)
-        await calendar_service.book_meeting(
+        # Book the meeting directly (calendar_service already checks availability)
+        booking_result = await calendar_service.book_meeting(
             name=req.name,
             email=req.email,
             start_time=start_dt.strftime("%Y-%m-%d %H:%M"),
             end_time=end_dt.strftime("%Y-%m-%d %H:%M"),
             title="Interview with Piyush Joshi"
         )
+
+        print(f"Booking successful: {booking_result}")
 
         # Format the time in a speakable way
         formatted_time = start_dt.strftime("%A, %B %d at %I:%M %p")
@@ -277,9 +286,17 @@ async def function_book_meeting(req: FunctionBookMeetingRequest):
             "result": f"Excellent! I've successfully scheduled your interview with Piyush for {formatted_time} India Standard Time. The meeting is now confirmed and blocked in his calendar. You will receive a confirmation email at {req.email} with all the details. Piyush is looking forward to speaking with you! Is there anything else you'd like to know about Piyush or the interview?"
         })
     except Exception as e:
-        print(f"Booking error: {e}")
+        error_msg = str(e)
+        print(f"Booking error: {error_msg}")
+
+        # Check if it's a double-booking error
+        if "already booked" in error_msg.lower() or "time slot" in error_msg.lower():
+            return JSONResponse({
+                "result": "I'm sorry, but that time slot was just taken by someone else. Let me check the available times again for you."
+            })
+
         return JSONResponse({
-            "result": "I encountered an issue while booking the meeting. Please try again or let me know if you'd like to try a different time slot."
+            "result": "I encountered an issue while booking the meeting. Could you please repeat your name and email, and I'll try booking again?"
         })
 
 
