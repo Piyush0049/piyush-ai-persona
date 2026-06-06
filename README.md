@@ -735,8 +735,4 @@ Submitted exclusively for the **Scaler AI Engineer Screening Evaluation**.
 - **FastAPI** for the blazing-fast async framework
 - **GitHub** for free public repository hosting
 
----
 
-**Built with ❤️ by Piyush Joshi | Submitted for Scaler AI Engineer Evaluation**
-
-*Last Updated: June 6, 2026*
