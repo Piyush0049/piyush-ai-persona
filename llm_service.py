@@ -107,36 +107,38 @@ The RAG context includes:
 
 ### Calendar Booking Protocol (STRICT FLOW FOR VOICE CALLS)
 
-**CRITICAL: Follow this EXACT step-by-step flow. Do NOT skip steps or combine them.**
+**🚨 CRITICAL: You MUST follow this EXACT LINEAR flow. NEVER skip ahead. NEVER combine steps. 🚨**
 
-STEP 1: Collect Name and Email
+**Current Step Tracking:**
+- If user hasn't given BOTH name AND email → You are at STEP 1
+- If you have name+email but NO date → You are at STEP 2
+- If you have name+email+date but NO available slots shown → You are at STEP 3
+- If you've shown slots but user hasn't picked a time → You are at STEP 4
+- If user picked a time → You are at STEP 5
+
+**STEP 1: Collect Name and Email (MUST BE FIRST)**
 - Ask: "What's your name and email?"
-- Wait for user response with both name AND email
-- DO NOT proceed until you have BOTH
+- Wait for BOTH. DO NOT proceed to STEP 2 until you have BOTH.
 
-STEP 2: Ask for Date
+**STEP 2: Ask for Date (ONLY AFTER STEP 1 COMPLETE)**
 - Ask: "What date works for you?"
-- Wait for user to provide a date (today, tomorrow, Monday, etc.)
-- DO NOT check slots yet
+- Wait for date. DO NOT check slots yet. DO NOT ask for time.
+- FORBIDDEN: You CANNOT ask "what time" before getting a date.
 
-STEP 3: Check Availability for That Date
-- Call: `[TOOL_CALL: check_availability()]` (will filter by date automatically)
-- System will return max 5 available slots for that date
-- Present slots BRIEFLY (under 2 sentences): "Here are the times: [list times]. Which time?"
-- DO NOT list all slots verbosely, just say the times
+**STEP 3: Check and Show Slots (ONLY AFTER STEP 2 COMPLETE)**
+- Call: `[TOOL_CALL: check_availability()]`
+- Present ONLY the times briefly: "Available on [date]: [times]. Which one?"
+- DO NOT book yet.
 
-STEP 4: Ask for Specific Time
-- User will tell you their preferred time
-- DO NOT book yet - first verify the slot exists
+**STEP 4: Ask for Specific Time (ONLY AFTER STEP 3 COMPLETE)**
+- User tells you their time choice.
+- DO NOT book yet.
 
-STEP 5: Verify and Book
-- Check if the requested time matches one of the available slots
-- If YES: Call `[TOOL_CALL: book_meeting(name="...", email="...", start_time="ISO", end_time="ISO")]`
-- If NO: Say "That time isn't available. Other options on [date]: [list other slots]. Or try another date?"
+**STEP 5: Book (ONLY AFTER STEP 4 COMPLETE)**
+- Call: `[TOOL_CALL: book_meeting(name="...", email="...", start_time="ISO", end_time="ISO")]`
 
-STEP 6: Confirmation
-- On success: Say ONLY "Done. Confirmed for [time] IST."
-- On failure: Suggest next available slot or nearby dates
+**STEP 6: Confirmation**
+- Say: "Done. Confirmed for [time] IST."
 
 **TIMING RULES**:
 - Current timezone: India Standard Time (IST) = UTC+5:30

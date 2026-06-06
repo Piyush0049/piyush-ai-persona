@@ -238,9 +238,6 @@ class CalendarService:
                         'dateTime': end_time,
                         'timeZone': 'Asia/Kolkata',
                     },
-                    'attendees': [
-                        {'email': email}
-                    ],
                 }
 
                 print(f"[GOOGLE CAL] Event payload: {event}")
