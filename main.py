@@ -425,29 +425,42 @@ async def openai_completions(request: Request):
             # Look for name, email, date, time in history
             full_conversation = " ".join([h.get("content", "") for h in history]) + " " + query
 
-            # Extract email - more flexible pattern
-            email_match = re.search(r'\b[A-Za-z0-9._%+-]+\s*@\s*[A-Za-z0-9.-]+\s*(?:dot|\.)\s*(?:com|org|net|edu|co|in)', full_conversation, re.IGNORECASE)
-            if not email_match:
-                # Fallback to standard pattern
+            # Extract email - handle voice recognition patterns like "joe at g mail dot com"
+            email = None
+
+            # Pattern 1: "joe at gmail dot com" or "joe at g mail dot com" (voice recognition format)
+            email_voice = re.search(r'(\w+)\s+(?:at|@)\s+(\w+(?:\s+\w+)?)\s+(?:dot|\.)\s+(\w+)', full_conversation, re.IGNORECASE)
+            if email_voice:
+                username = email_voice.group(1)
+                domain = email_voice.group(2).replace(" ", "")  # "g mail" -> "gmail"
+                tld = email_voice.group(3)
+                email = f"{username}@{domain}.{tld}"
+            else:
+                # Fallback to standard email pattern
                 email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', full_conversation)
+                if email_match:
+                    email = email_match.group(0)
 
-            email = email_match.group(0).replace(" ", "").replace("dot", ".") if email_match else None
+            # Extract name - only from USER messages (not AI responses to avoid "Piyush's")
+            # Get only user messages from history
+            user_messages = " ".join([h.get("content", "") for h in history if h.get("role") == "user"]) + " " + query
 
-            # Extract name - more flexible patterns
             name_patterns = [
-                r'(?:name is|my name is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)',  # "name is Joe"
-                r'(?:I\'m|I am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)',  # "I'm Joe"
-                r'^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*,',  # "Joe, joe@email.com"
+                r'(?:name is|my name is|I am|I\'m)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)',  # "my name is Joe"
+                r'(?:^|\s)([A-Z][a-z]+)\s*,\s*and',  # "Joe, and my email"
             ]
 
             name = None
             for pattern in name_patterns:
-                name_match = re.search(pattern, full_conversation, re.MULTILINE)
+                name_match = re.search(pattern, user_messages, re.IGNORECASE)
                 if name_match:
                     name = name_match.group(1)
-                    break
+                    # Don't accept "Piyush" or "Piyusha" as user's name
+                    if "piyush" not in name.lower():
+                        break
 
             print(f"[AUTO-BOOK] Extracted - Name: {name}, Email: {email}")
+            print(f"[AUTO-BOOK] User messages only: {user_messages[:200]}")
 
             # Extract time from user's last message or response (like "two PM", "3 PM", "14:00")
             time_patterns = [
