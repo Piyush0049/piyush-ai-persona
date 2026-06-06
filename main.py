@@ -145,7 +145,7 @@ async def function_get_available_slots_get():
             suggestions.append(day_name)
     suggestion_text = ", ".join(suggestions[:5])
     return JSONResponse({
-        "result": f"Sure! Which day would you like to schedule the interview? I have availability on {suggestion_text}. Just tell me the day that works best for you."
+        "result": "What date works for you?"
     })
 
 @app.post("/functions/get_available_slots")
@@ -169,7 +169,7 @@ async def function_get_available_slots(req: GetSlotsRequest):
 
             suggestion_text = ", ".join(suggestions[:5])
             return JSONResponse({
-                "result": f"Sure! Which day would you like to schedule the interview? I have availability on {suggestion_text}. Just tell me the day that works best for you."
+                "result": "What date?"
             })
 
         # Parse the date request
@@ -201,7 +201,7 @@ async def function_get_available_slots(req: GetSlotsRequest):
 
         if not target_date:
             return JSONResponse({
-                "result": f"I didn't quite catch that date. Could you tell me which day you'd prefer? For example, you can say 'tomorrow', 'next Monday', or a specific date."
+                "result": "Which day? Say 'tomorrow', 'Monday', or a date."
             })
 
         # Get slots for the specific date
@@ -211,29 +211,30 @@ async def function_get_available_slots(req: GetSlotsRequest):
         if not slots:
             next_day = target_date + timedelta(days=1)
             return JSONResponse({
-                "result": f"I'm sorry, there are no available time slots on {target_date.strftime('%A, %B %d')}. Would you like to try {next_day.strftime('%A, %B %d')} instead?"
+                "result": f"No slots on {target_date.strftime('%A')}. Try {next_day.strftime('%A')} instead?"
             })
 
-        # Format slots for speaking - only times, since date is known
+        # Format slots for speaking - only times, limit to 5 slots
         slot_text = []
-        for i, slot in enumerate(slots, 1):
-            # Get just the time part
+        max_slots = min(5, len(slots))  # Show max 5 slots
+        for i in range(max_slots):
+            slot = slots[i]
             start_iso = slot.get("start", "")
             try:
                 dt = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
                 time_str = dt.strftime("%I:%M %p")
-                slot_text.append(f"Option {i}: {time_str}")
+                slot_text.append(time_str)
             except:
                 formatted_time = slot.get("formatted", "")
-                slot_text.append(f"Option {i}: {formatted_time}")
+                slot_text.append(formatted_time)
 
-        speakable_slots = ". ".join(slot_text)
+        speakable_slots = ", ".join(slot_text)
         day_name = target_date.strftime("%A, %B %d")
 
-        print(f"Returning {len(slots)} slots for {day_name}")
+        print(f"Returning {max_slots} slots for {day_name}")
 
         return JSONResponse({
-            "result": f"Great! On {day_name}, I have the following times available: {speakable_slots}. Which time works best for you?"
+            "result": f"{day_name}: {speakable_slots}. Which time?"
         })
     except Exception as e:
         print(f"Error fetching slots: {e}")
@@ -242,6 +243,27 @@ async def function_get_available_slots(req: GetSlotsRequest):
         return JSONResponse({
             "result": "I'm having trouble accessing the calendar right now. Please try again in a moment."
         })
+
+def find_next_available_slot(after_dt) -> Optional[Dict[str, Any]]:
+    """Find the next available slot after the given datetime"""
+    from datetime import datetime, timedelta
+
+    date_str = after_dt.date().isoformat()
+    slots = calendar_service.get_available_slots(date_str)
+
+    # Filter slots that are after the requested time
+    for slot in slots:
+        try:
+            slot_dt = datetime.fromisoformat(slot["start"].replace("Z", "+00:00"))
+            if slot_dt.replace(tzinfo=None) > after_dt:
+                return slot
+        except:
+            continue
+
+    # If no slots today, try next day
+    next_day = (after_dt + timedelta(days=1)).date().isoformat()
+    next_day_slots = calendar_service.get_available_slots(next_day)
+    return next_day_slots[0] if next_day_slots else None
 
 class FunctionBookMeetingRequest(BaseModel):
     name: str
@@ -283,7 +305,7 @@ async def function_book_meeting(req: FunctionBookMeetingRequest):
         formatted_time = start_dt.strftime("%A, %B %d at %I:%M %p")
 
         return JSONResponse({
-            "result": f"Excellent! I've successfully scheduled your interview with Piyush for {formatted_time} India Standard Time. The meeting is now confirmed and blocked in his calendar. You will receive a confirmation email at {req.email} with all the details. Piyush is looking forward to speaking with you! Is there anything else you'd like to know about Piyush or the interview?"
+            "result": f"Done. Confirmed for {formatted_time} IST."
         })
     except Exception as e:
         error_msg = str(e)
@@ -291,12 +313,22 @@ async def function_book_meeting(req: FunctionBookMeetingRequest):
 
         # Check if it's a double-booking error
         if "already booked" in error_msg.lower() or "time slot" in error_msg.lower():
+            # Try to find next available slot after the requested time
+            try:
+                next_slot = find_next_available_slot(start_dt)
+                if next_slot:
+                    next_time = datetime.fromisoformat(next_slot["start"].replace("Z", "+00:00")).strftime("%I:%M %p")
+                    return JSONResponse({
+                        "result": f"That slot's taken. Next available is {next_time}. Book it?"
+                    })
+            except:
+                pass
             return JSONResponse({
-                "result": "I'm sorry, but that time slot was just taken by someone else. Let me check the available times again for you."
+                "result": "That slot's taken. Checking other times."
             })
 
         return JSONResponse({
-            "result": "I encountered an issue while booking the meeting. Could you please repeat your name and email, and I'll try booking again?"
+            "result": "Booking failed. Please repeat your name and email."
         })
 
 
