@@ -290,7 +290,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 24px;
+            padding: 6px 24px;
         }
 
         .status-pill {
@@ -1193,7 +1193,7 @@
                 <div class="header-actions">
                     <button class="header-btn" id="clear-btn">
                         <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
-                        <span>Clear Chat</span>
+                        <span>Clear</span>
                     </button>
                     <button class="header-btn" id="settings-btn">
                         <i data-lucide="settings" style="width: 14px; height: 14px;"></i>
@@ -1251,7 +1251,7 @@
                                 <span>Book Slot</span>
                             </div>
                         </div>
-                        <span class="disclaimer-text">Grounded in actual repositories and CV.</span>
+                        <!-- <span class="disclaimer-text">Grounded in actual repositories and CV.</span> -->
                     </div>
                 </div>
             </div>
@@ -1694,7 +1694,7 @@
             } catch (err) {
                 if (err.name === 'AbortError') {
                     console.log('Generation stopped by user');
-                    appendSystemMessage("Generation stopped.");
+                    appendInfoMessage("Stopped by user");
                 } else {
                     removeLoadingBubble();
                     appendSystemMessage("Connection failed. Ensure the local backend server is running.");
@@ -1716,6 +1716,23 @@
                     <span>System Error</span>
                 </div>
                 <div class="message-bubble" style="border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05);">
+                    ${text}
+                </div>
+            `;
+            messagesContainer.appendChild(row);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            lucide.createIcons();
+        }
+
+        function appendInfoMessage(text) {
+            const row = document.createElement('div');
+            row.className = 'message-row bot';
+            row.innerHTML = `
+                <div class="msg-sender" style="color: var(--text-muted);">
+                    <i data-lucide="info" style="width: 10px; height: 10px;"></i>
+                    <span>System</span>
+                </div>
+                <div class="message-bubble" style="border-color: rgba(255, 255, 255, 0.08); background: rgba(255, 255, 255, 0.02); color: var(--text-muted); font-size: 13px;">
                     ${text}
                 </div>
             `;
