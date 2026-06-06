@@ -473,6 +473,8 @@ async def openai_completions(request: Request):
             
     except Exception as e:
         print(f"OpenAI Gateway Error: {e}")
+        import traceback
+        traceback.print_exc()
         return JSONResponse({"error": str(e)}, status_code=500)
 
 
