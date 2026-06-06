@@ -534,17 +534,20 @@ async def openai_completions(request: Request):
                                 # Default to 2 days from now if not found
                                 booking_date = datetime.now() + timedelta(days=2)
 
-                        start_time = booking_date.replace(hour=hour, minute=0, second=0, microsecond=0)
+                        # Create timezone-aware datetime for IST
+                        from datetime import timezone as tz
+                        ist = tz(timedelta(hours=5, minutes=30))
+                        start_time = booking_date.replace(hour=hour, minute=0, second=0, microsecond=0, tzinfo=ist)
                         end_time = start_time + timedelta(hours=1)
 
                         print(f"[AUTO-BOOK] Booking details - Name: {name}, Email: {email}, Time: {start_time}")
 
-                        # Actually book it
+                        # Actually book it - use ISO 8601 format with timezone
                         booking_result = await calendar_service.book_meeting(
                             name=name,
                             email=email,
-                            start_time=start_time.strftime("%Y-%m-%d %H:%M"),
-                            end_time=end_time.strftime("%Y-%m-%d %H:%M"),
+                            start_time=start_time.isoformat(),  # Proper ISO format: 2026-06-08T15:00:00+05:30
+                            end_time=end_time.isoformat(),
                             title="Interview with Piyush Joshi"
                         )
                         print(f"[WORKAROUND] Auto-booked meeting: {booking_result}")
