@@ -128,6 +128,69 @@ async def api_book(req: BookingRequest):
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
+# Function calling endpoints for Vapi
+@app.get("/functions/get_available_slots")
+@app.post("/functions/get_available_slots")
+async def function_get_available_slots():
+    """Function for Vapi to get available calendar slots"""
+    try:
+        slots = calendar_service.get_available_slots()
+        return JSONResponse({
+            "success": True,
+            "slots": slots[:5],  # Return first 5 slots
+            "message": f"Found {len(slots)} available slots"
+        })
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+class FunctionBookMeetingRequest(BaseModel):
+    name: str
+    email: str
+    slot: str  # Format: "2026-06-10 14:00"
+
+@app.post("/functions/book_meeting")
+async def function_book_meeting(req: FunctionBookMeetingRequest):
+    """Function for Vapi to book a meeting"""
+    try:
+        from datetime import datetime, timedelta
+
+        # Parse the slot time
+        start_dt = datetime.strptime(req.slot, "%Y-%m-%d %H:%M")
+        end_dt = start_dt + timedelta(hours=1)
+
+        # Check if slot is still available
+        available_slots = calendar_service.get_available_slots()
+        requested_slot = req.slot
+
+        if requested_slot not in available_slots:
+            return JSONResponse({
+                "success": False,
+                "error": "This time slot is no longer available. Please choose another slot.",
+                "message": "Slot unavailable"
+            }, status_code=409)
+
+        # Book the meeting (this will add it to the calendar)
+        res = await calendar_service.book_meeting(
+            name=req.name,
+            email=req.email,
+            start_time=start_dt.strftime("%Y-%m-%d %H:%M"),
+            end_time=end_dt.strftime("%Y-%m-%d %H:%M"),
+            title="Interview with Piyush Joshi"
+        )
+
+        return JSONResponse({
+            "success": True,
+            "booking": res,
+            "message": f"Successfully booked meeting for {req.name} on {req.slot}"
+        })
+    except Exception as e:
+        print(f"Booking error: {e}")
+        return JSONResponse({
+            "success": False,
+            "error": str(e),
+            "message": "Failed to book meeting"
+        }, status_code=500)
+
 
 @app.post("/v1/chat/completions")
 @app.post("/chat/completions")
@@ -136,21 +199,67 @@ async def openai_completions(request: Request):
         body = await request.json()
         messages = body.get("messages", [])
         stream = body.get("stream", False)
-        
+        tools = body.get("tools", [])
+        tool_choice = body.get("tool_choice", "auto")
+
         if not messages:
             raise HTTPException(status_code=400, detail="No messages provided")
-            
+
         last_message = messages[-1]
-        query = last_message.get("content", "")
-        
+
+        # Handle function call results
+        if last_message.get("role") == "tool":
+            # Tool response - continue conversation
+            query = "Continue based on the function result"
+        else:
+            query = last_message.get("content", "")
+
         history = []
         for msg in messages[:-1]:
             role = msg.get("role")
             content = msg.get("content")
             if role in ("user", "assistant") and content:
                 history.append({"role": role, "content": content})
-                
+
         print(f"OpenAI Gateway Query: {query}")
+
+        # Check if query requires function calling
+        query_lower = query.lower()
+        needs_calendar = any(word in query_lower for word in ["book", "schedule", "available", "slots", "calendar", "meeting", "interview", "availability"])
+
+        # If tools are available and query needs calendar, return function call
+        if tools and needs_calendar:
+            # Check if asking for availability
+            if any(word in query_lower for word in ["available", "slots", "when", "calendar", "check"]):
+                created_time = int(time.time())
+                completion_id = f"chatcmpl-{uuid.uuid4()}"
+                return {
+                    "id": completion_id,
+                    "object": "chat.completion",
+                    "created": created_time,
+                    "model": body.get("model", "gpt-4o-mini"),
+                    "choices": [{
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [{
+                                "id": f"call_{uuid.uuid4().hex[:24]}",
+                                "type": "function",
+                                "function": {
+                                    "name": "get_available_slots",
+                                    "arguments": "{}"
+                                }
+                            }]
+                        },
+                        "finish_reason": "tool_calls"
+                    }],
+                    "usage": {
+                        "prompt_tokens": len(query) // 4,
+                        "completion_tokens": 20,
+                        "total_tokens": (len(query) // 4) + 20
+                    }
+                }
 
         response_text = await llm_service.generate_response(query, history)
 
