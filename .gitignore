@@ -45,3 +45,15 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+nul
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*~
+
+# PDF files (except resume and evals report)
+*.pdf
+!data/piyush_joshi_resume.pdf
+!static/evals_report.pdf

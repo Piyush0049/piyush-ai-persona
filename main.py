@@ -58,10 +58,20 @@ async def api_chat(req: ChatRequest):
         }, status_code=500)
 
 @app.get("/api/slots")
-async def api_slots():
+async def api_slots(date: Optional[str] = None):
+    """Get available time slots for a specific date or next 7 days"""
     try:
-        slots = calendar_service.get_available_slots()
+        slots = calendar_service.get_available_slots(date)
         return JSONResponse({"success": True, "slots": slots})
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
+
+@app.get("/api/bookings")
+async def api_get_bookings():
+    """Get all existing bookings"""
+    try:
+        bookings = calendar_service.get_booked_slots()
+        return JSONResponse({"success": True, "bookings": bookings})
     except Exception as e:
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
@@ -186,6 +196,17 @@ async def serve_index():
                 headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
             )
     return HTMLResponse(content="<h1>Frontend file static/index.html not found. Please compile or create it.</h1>")
+
+@app.get("/calendar", response_class=HTMLResponse)
+async def serve_calendar():
+    calendar_path = "static/calendar.html"
+    if os.path.exists(calendar_path):
+        with open(calendar_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(
+                content=f.read(),
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+            )
+    return HTMLResponse(content="<h1>Calendar page not found.</h1>")
 
 if __name__ == "__main__":
     import uvicorn
