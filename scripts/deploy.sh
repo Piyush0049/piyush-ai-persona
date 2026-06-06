@@ -36,12 +36,11 @@ echo "Installing dependencies..."
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# 4. Configure systemd service if not present, reload, and restart
-echo "Configuring and restarting application service..."
-sudo cp rag_portfolio.service /etc/systemd/system/
+# 4. Restart application service (systemd service already configured on server)
+echo "Restarting application service..."
 sudo systemctl daemon-reload
-sudo systemctl enable rag_portfolio.service
 sudo systemctl restart rag_portfolio.service
+echo "Service restarted successfully"
 
 # 5. Configure Nginx reverse proxy for portfolio.piyushjoshi.space if not already present
 echo "Configuring Nginx reverse proxy..."
