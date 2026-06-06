@@ -244,7 +244,7 @@ class FunctionBookMeetingRequest(BaseModel):
 
 @app.post("/functions/book_meeting")
 async def function_book_meeting(req: FunctionBookMeetingRequest):
-    """Function for Vapi to book a meeting"""
+    """Function for Vapi to book a meeting - books directly on the call"""
     try:
         from datetime import datetime, timedelta
 
@@ -274,12 +274,12 @@ async def function_book_meeting(req: FunctionBookMeetingRequest):
         formatted_time = start_dt.strftime("%A, %B %d at %I:%M %p")
 
         return JSONResponse({
-            "result": f"Perfect! I've successfully booked your interview with Piyush for {formatted_time} India Standard Time. You'll receive a confirmation email at {req.email} shortly. Is there anything else I can help you with?"
+            "result": f"Excellent! I've successfully scheduled your interview with Piyush for {formatted_time} India Standard Time. The meeting is now confirmed and blocked in his calendar. You will receive a confirmation email at {req.email} with all the details. Piyush is looking forward to speaking with you! Is there anything else you'd like to know about Piyush or the interview?"
         })
     except Exception as e:
         print(f"Booking error: {e}")
         return JSONResponse({
-            "result": "I encountered an issue while booking the meeting. Please try again or contact Piyush directly at his email."
+            "result": "I encountered an issue while booking the meeting. Please try again or let me know if you'd like to try a different time slot."
         })
 
 
