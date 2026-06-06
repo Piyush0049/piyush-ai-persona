@@ -56,6 +56,7 @@
             overflow: hidden;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            width: 100%;
         }
 
         /* App Container */
@@ -64,6 +65,7 @@
             width: 100%;
             height: 100%;
             position: relative;
+            min-width: 0;
         }
 
         /* Hide background interactive elements for a simpler design */
@@ -278,6 +280,7 @@
             z-index: 5;
             height: 100%;
             background-color: var(--bg-primary);
+            min-width: 0;
         }
 
         .chat-header {
@@ -353,6 +356,8 @@
             flex-direction: column;
             align-items: center;
             gap: 36px;
+            width: 100%;
+            min-width: 0;
         }
 
         .welcome-view {
@@ -895,6 +900,15 @@
             cursor: not-allowed;
         }
 
+        .send-btn.stop-btn {
+            background: #ef4444;
+            border-radius: 4px;
+        }
+
+        .send-btn.stop-btn:hover {
+            background: #dc2626;
+        }
+
         .input-tools {
             display: flex;
             align-items: center;
@@ -1288,6 +1302,7 @@
         // Chat state
         let conversationHistory = [];
         let isChatLoading = false;
+        let currentAbortController = null;
 
         // Vapi Voice State
         let vapi = null;
@@ -1310,7 +1325,11 @@
         });
 
         sendButton.addEventListener('click', () => {
-            sendMessage();
+            if (isChatLoading && currentAbortController) {
+                stopGeneration();
+            } else {
+                sendMessage();
+            }
         });
 
         // Open external links in a new tab
@@ -1504,6 +1523,29 @@
         }
 
         // Send message function
+        function updateSendButton(isGenerating) {
+            if (isGenerating) {
+                sendButton.classList.add('stop-btn');
+                sendButton.innerHTML = '<i data-lucide="square" style="width: 14px; height: 14px;"></i>';
+                sendButton.disabled = false;
+            } else {
+                sendButton.classList.remove('stop-btn');
+                sendButton.innerHTML = '<i data-lucide="arrow-up" style="width: 16px; height: 16px;"></i>';
+                sendButton.disabled = chatTextarea.value.trim() === '';
+            }
+            lucide.createIcons();
+        }
+
+        function stopGeneration() {
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
+            }
+            isChatLoading = false;
+            removeLoadingBubble();
+            updateSendButton(false);
+        }
+
         async function sendMessage() {
             const text = chatTextarea.value.trim();
             if (!text || isChatLoading) return;
@@ -1532,6 +1574,10 @@
 
             isChatLoading = true;
             appendLoadingBubble();
+            updateSendButton(true);
+
+            // Create abort controller
+            currentAbortController = new AbortController();
 
             try {
                 // Check if user is asking to see slots/availability directly
@@ -1544,7 +1590,8 @@
                     body: JSON.stringify({
                         message: text,
                         history: conversationHistory
-                    })
+                    }),
+                    signal: currentAbortController.signal
                 });
 
                 if (!response.ok) {
@@ -1645,10 +1692,17 @@
                 conversationHistory.push({ role: "assistant", content: reply });
                 saveChatHistory();
             } catch (err) {
-                removeLoadingBubble();
-                appendSystemMessage("Connection failed. Ensure the local backend server is running.");
+                if (err.name === 'AbortError') {
+                    console.log('Generation stopped by user');
+                    appendSystemMessage("Generation stopped.");
+                } else {
+                    removeLoadingBubble();
+                    appendSystemMessage("Connection failed. Ensure the local backend server is running.");
+                }
             } finally {
                 isChatLoading = false;
+                currentAbortController = null;
+                updateSendButton(false);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
             }
         }
