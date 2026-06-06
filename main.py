@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional
 from config import settings
 from llm_service import llm_service
 from calendar_service import calendar_service
+from mongo_logger import mongo_logger
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -35,21 +36,51 @@ class BookingRequest(BaseModel):
     title: Optional[str] = "Interview"
 
 @app.post("/api/chat")
-async def api_chat(req: ChatRequest):
+async def api_chat(req: ChatRequest, request: Request):
     try:
         query = req.message
         history = req.history or []
         print(f"API Chat query: {query}")
-        
+
+        # Collect full response for logging
+        full_response = ""
+
         async def stream_generator():
+            nonlocal full_response
             try:
                 async for chunk in llm_service.generate_response_stream(query, history):
+                    full_response += chunk
                     yield chunk
             except Exception as e:
                 print(f"Streaming error: {e}")
-                yield f"\n[STREAM_ERROR: {str(e)}]"
-                
-        return StreamingResponse(stream_generator(), media_type="text/plain")
+                error_msg = f"\n[STREAM_ERROR: {str(e)}]"
+                full_response += error_msg
+                yield error_msg
+
+        # Stream the response
+        response = StreamingResponse(stream_generator(), media_type="text/plain")
+
+        # Log to MongoDB after streaming (in background)
+        async def log_after_stream():
+            await asyncio.sleep(0.5)  # Wait for stream to complete
+            client_ip = request.client.host if request.client else "unknown"
+            user_agent = request.headers.get("user-agent", "unknown")
+
+            mongo_logger.log_message(
+                message=query,
+                response=full_response,
+                session_id=None,  # Could add session tracking later
+                metadata={
+                    "ip": client_ip,
+                    "user_agent": user_agent,
+                    "timestamp": time.time()
+                }
+            )
+
+        # Start logging task in background
+        asyncio.create_task(log_after_stream())
+
+        return response
     except Exception as e:
         print(f"API Chat Error: {e}")
         return JSONResponse({
@@ -120,8 +151,23 @@ async def openai_completions(request: Request):
                 history.append({"role": role, "content": content})
                 
         print(f"OpenAI Gateway Query: {query}")
-        
+
         response_text = await llm_service.generate_response(query, history)
+
+        # Log to MongoDB
+        client_ip = request.client.host if request.client else "unknown"
+        user_agent = request.headers.get("user-agent", "unknown")
+        mongo_logger.log_message(
+            message=query,
+            response=response_text,
+            session_id=None,
+            metadata={
+                "ip": client_ip,
+                "user_agent": user_agent,
+                "source": "voice_call",
+                "timestamp": time.time()
+            }
+        )
         
         created_time = int(time.time())
         completion_id = f"chatcmpl-{uuid.uuid4()}"
@@ -185,6 +231,16 @@ if not os.path.exists("static"):
     os.makedirs("static")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/favicon.svg")
+async def serve_favicon_svg():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/favicon.svg")
+
+@app.get("/favicon.ico")
+async def serve_favicon_ico():
+    from fastapi.responses import FileResponse
+    return FileResponse("static/favicon.svg")
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
