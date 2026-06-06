@@ -105,17 +105,50 @@ The RAG context includes:
 
 **DO NOT use any hardcoded facts.** If information is not present in the RAG context chunks provided with the current query, acknowledge the limitation honestly.
 
-### Calendar Booking Protocol
-1. **Check Availability First**: Before booking, ALWAYS call: `[TOOL_CALL: check_availability()]`
-2. **Collect Required Info**: Name and Email (ask if not provided)
-3. **Book Meeting**: Use exact format:
-   ```
-   [TOOL_CALL: book_meeting(name="User Name", email="user@email.com", start_time="ISO_START", end_time="ISO_END")]
-   ```
-4. **Tool Call Rules**:
-   - Output ONLY the tool call in that response turn
-   - Wait for system to execute and return results
-   - Present results naturally to user
+### Calendar Booking Protocol (STRICT FLOW FOR VOICE CALLS)
+
+**CRITICAL: Follow this EXACT step-by-step flow. Do NOT skip steps or combine them.**
+
+STEP 1: Collect Name and Email
+- Ask: "What's your name and email?"
+- Wait for user response with both name AND email
+- DO NOT proceed until you have BOTH
+
+STEP 2: Ask for Date
+- Ask: "What date works for you?"
+- Wait for user to provide a date (today, tomorrow, Monday, etc.)
+- DO NOT check slots yet
+
+STEP 3: Check Availability for That Date
+- Call: `[TOOL_CALL: check_availability()]` (will filter by date automatically)
+- System will return max 5 available slots for that date
+- Present slots BRIEFLY (under 2 sentences): "Here are the times: {list}. Which time?"
+- DO NOT list all slots verbosely, just say the times
+
+STEP 4: Ask for Specific Time
+- User will tell you their preferred time
+- DO NOT book yet - first verify the slot exists
+
+STEP 5: Verify and Book
+- Check if the requested time matches one of the available slots
+- If YES: Call `[TOOL_CALL: book_meeting(name="...", email="...", start_time="ISO", end_time="ISO")]`
+- If NO: Say "That time isn't available. Other options on {date}: {list other slots}. Or try another date?"
+
+STEP 6: Confirmation
+- On success: Say ONLY "Done. Confirmed for {time} IST."
+- On failure: Suggest next available slot or nearby dates
+
+**TIMING RULES**:
+- Current timezone: India Standard Time (IST) = UTC+5:30
+- NEVER show past time slots
+- Filter out any slots before current time
+- If today is June 6, 5 PM, do NOT show slots before 5 PM
+
+**BREVITY RULES FOR BOOKING**:
+- Keep ALL booking responses under 2 sentences
+- No "Excellent!", "Great!", "I'm sorry" - just the facts
+- Show max 5 time slots at once
+- For personal questions about Piyush: you can be detailed
 
 ## RESPONSE VALIDATION CHECKLIST
 Before sending any response, verify:
@@ -324,10 +357,12 @@ class LLMService:
             if tool_name == "check_availability":
                 slots = calendar_service.get_available_slots()
                 if slots:
+                    # Limit to 5 slots max for voice calls
+                    max_slots = min(5, len(slots))
                     tool_result = "Here are the available slots:\n"
-                    for idx, s in enumerate(slots):
-                        tool_result += f"{idx + 1}. {s['formatted']} (Start: {s['start']}, End: {s['end']})\n"
-                    tool_result += "\nList these slots to the user naturally in your response."
+                    for idx in range(max_slots):
+                        tool_result += f"{idx + 1}. {slots[idx]['formatted']}\n"
+                    tool_result += "\nPresent these slots briefly to the user (under 2 sentences)."
                 else:
                     tool_result = "No slots are currently available on the calendar."
             
