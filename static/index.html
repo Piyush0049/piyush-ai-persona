@@ -52,6 +52,7 @@
             color: var(--text-main);
             font-family: var(--font-body);
             height: 100vh;
+            height: 100dvh;
             display: flex;
             overflow: hidden;
             -webkit-font-smoothing: antialiased;
@@ -1071,7 +1072,7 @@
             }
 
             .chat-input-area {
-                padding: 16px 16px 20px 16px;
+                padding: 16px 16px calc(28px + env(safe-area-inset-bottom)) 16px;
             }
 
             .message-bubble {
@@ -1104,7 +1105,7 @@
             }
 
             .chat-input-area {
-                padding: 8px 12px 12px 12px;
+                padding: 8px 12px calc(24px + env(safe-area-inset-bottom)) 12px;
             }
 
             .message-bubble {
