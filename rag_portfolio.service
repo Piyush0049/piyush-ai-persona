@@ -1,0 +1,15 @@
+[Unit]
+Description=RAG Portfolio Service
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/home/ec2-user/rag_project_system
+Environment="PATH=/home/ec2-user/rag_project_system/venv/bin"
+ExecStart=/home/ec2-user/rag_project_system/venv/bin/python main.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
